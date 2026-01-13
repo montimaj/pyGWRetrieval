@@ -71,6 +71,7 @@ nav:
     - API Reference: api_reference.md
   - Examples:
     - Case Study: case_study.md
+    - Full Analysis Report: analysis_report.md
   - Changelog: changelog.md
 
 extra:

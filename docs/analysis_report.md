@@ -98,7 +98,7 @@ Raw measurements were aggregated to annual means for trend analysis, with monthl
 
 ### Figure 1: Regional Trends by MSA
 
-![Regional Trends by MSA](plots/regional_trends_by_msa.png)
+![Regional Trends by MSA](assets/regional_trends_by_msa.png)
 
 **Description:** This four-panel figure presents the primary trend analysis results:
 
@@ -130,7 +130,7 @@ Raw measurements were aggregated to annual means for trend analysis, with monthl
 
 ### Figure 2: Data Quality Analysis
 
-![Data Quality Analysis](plots/data_quality_analysis.png)
+![Data Quality Analysis](assets/data_quality_analysis.png)
 
 **Description:** This four-panel figure assesses data quality and coverage:
 
@@ -148,7 +148,7 @@ Raw measurements were aggregated to annual means for trend analysis, with monthl
 
 ### Figure 3: Regional Distributions
 
-![Regional Distributions](plots/regional_distributions.png)
+![Regional Distributions](assets/regional_distributions.png)
 
 **Description:** This four-panel figure shows the statistical distribution of water levels:
 
@@ -166,7 +166,7 @@ Raw measurements were aggregated to annual means for trend analysis, with monthl
 
 ### Figure 4: Regional Temporal Patterns
 
-![Regional Temporal Patterns](plots/regional_temporal_patterns.png)
+![Regional Temporal Patterns](assets/regional_temporal_patterns.png)
 
 **Description:** This four-panel figure examines temporal patterns:
 
@@ -184,15 +184,17 @@ Raw measurements were aggregated to annual means for trend analysis, with monthl
 
 ### Figure 5: Monthly Boxplots by Region
 
-![Monthly Boxplots](plots/monthly_boxplots_by_region.png)
+![Monthly Boxplots](assets/monthly_boxplots_by_region.png)
 
 **Description:** Grid of boxplots (3×3) showing monthly water level distributions for each MSA. Each subplot displays 12 months of data with:
+
 - Box: Interquartile range (25th-75th percentile)
 - Whiskers: 1.5× IQR
 - Line: Median
 - Points: Outliers
 
 **Key Patterns:**
+
 - **Miami:** Strong seasonal signal with shallower water tables in summer (wet season)
 - **Boston:** Moderate seasonality with deepest levels in fall
 - **San Francisco:** Mediterranean pattern with deeper levels in dry season (summer-fall)
@@ -200,9 +202,10 @@ Raw measurements were aggregated to annual means for trend analysis, with monthl
 
 ### Figure 6: Annual Boxplots by Region
 
-![Annual Boxplots](plots/annual_boxplots_by_region.png)
+![Annual Boxplots](assets/annual_boxplots_by_region.png)
 
 **Description:** Grid of boxplots showing annual water level distributions (1980-present) for each MSA. This visualization reveals:
+
 - Long-term trends (shift in median over time)
 - Inter-annual variability (box size consistency)
 - Extreme years (outliers)
@@ -214,7 +217,7 @@ Raw measurements were aggregated to annual means for trend analysis, with monthl
 
 ### Figure 7: Regional Correlation and Clustering
 
-![Correlation Clustering](plots/regional_correlation_clustering.png)
+![Correlation Clustering](assets/regional_correlation_clustering.png)
 
 **Description:** This four-panel figure examines relationships between regions:
 
@@ -227,6 +230,7 @@ Raw measurements were aggregated to annual means for trend analysis, with monthl
 - **Panel D (Bottom-Right):** Seasonal amplitude (max-min monthly mean) by region. Higher values indicate stronger seasonal signals.
 
 **Correlation Findings:**
+
 - Strong positive correlations suggest shared regional drivers (climate, policy)
 - Weak correlations indicate independent aquifer systems
 - Geographic proximity does not always predict correlation
@@ -237,7 +241,7 @@ Raw measurements were aggregated to annual means for trend analysis, with monthl
 
 ### Figure 8: Extreme Events Analysis
 
-![Extreme Events](plots/extreme_events_analysis.png)
+![Extreme Events](assets/extreme_events_analysis.png)
 
 **Description:** This four-panel figure analyzes extreme groundwater conditions:
 
@@ -255,7 +259,7 @@ Raw measurements were aggregated to annual means for trend analysis, with monthl
 
 ### Figure 9: Rolling Trend Analysis
 
-![Rolling Trends](plots/rolling_trend_analysis.png)
+![Rolling Trends](assets/rolling_trend_analysis.png)
 
 **Description:** This four-panel figure examines how trends have changed over time:
 
@@ -268,6 +272,7 @@ Raw measurements were aggregated to annual means for trend analysis, with monthl
 - **Panel D (Bottom-Right):** Cumulative change since 1990 baseline. Shows total water level change over the monitoring period for each region.
 
 **Acceleration Analysis:**
+
 - **Improving (negative acceleration):** Dallas, Chicago, San Francisco
 - **Worsening (positive acceleration):** Washington DC
 - **Stable:** Miami, Boston
@@ -278,7 +283,7 @@ Raw measurements were aggregated to annual means for trend analysis, with monthl
 
 ### Figure 10: Geographic Grouping Analysis
 
-![Geographic Grouping](plots/geographic_grouping_analysis.png)
+![Geographic Grouping](assets/geographic_grouping_analysis.png)
 
 **Description:** This four-panel figure explores geographic patterns:
 
@@ -296,9 +301,10 @@ Raw measurements were aggregated to annual means for trend analysis, with monthl
 
 ### Figure 11: Regional Summary Dashboard
 
-![Summary Dashboard](plots/regional_summary_dashboard.png)
+![Summary Dashboard](assets/regional_summary_dashboard.png)
 
 **Description:** Comprehensive dashboard showing key metrics for all 9 regions:
+
 - Region name
 - Trend sparkline (historical trajectory)
 - Mean water level (ft)
@@ -307,7 +313,7 @@ Raw measurements were aggregated to annual means for trend analysis, with monthl
 
 ### Figure 12: Change Point Analysis
 
-![Change Point Analysis](plots/change_point_analysis.png)
+![Change Point Analysis](assets/change_point_analysis.png)
 
 **Description:** This four-panel figure identifies regime shifts:
 
@@ -325,23 +331,23 @@ Raw measurements were aggregated to annual means for trend analysis, with monthl
 
 ### Figure 13: Sustainability Index
 
-![Sustainability Index](plots/sustainability_index.png)
+![Sustainability Index](assets/sustainability_index.png)
 
 **Description:** This four-panel figure presents the sustainability assessment:
 
 - **Panel A (Top-Left):** Composite Sustainability Index (0-100 scale) by region. Higher scores indicate more sustainable groundwater conditions. Green line = good threshold (60), orange line = warning threshold (40).
 
 - **Panel B (Top-Right):** Risk matrix plotting trend vs. variability. Quadrants classify regions by risk level:
-  - Upper right: High risk (declining + variable)
-  - Upper left: Moderate risk (rising + variable)
-  - Lower left: Low risk (rising + stable)
-  - Lower right: Moderate risk (declining + stable)
+    - Upper right: High risk (declining + variable)
+    - Upper left: Moderate risk (rising + variable)
+    - Lower left: Low risk (rising + stable)
+    - Lower right: Moderate risk (declining + stable)
 
 - **Panel C (Bottom-Left):** Stacked bar showing sustainability index components:
-  - Trend Score (40% weight)
-  - Stability Score (30% weight)
-  - Recent Trend Score (20% weight)
-  - Data Quality Score (10% weight)
+    - Trend Score (40% weight)
+    - Stability Score (30% weight)
+    - Recent Trend Score (20% weight)
+    - Data Quality Score (10% weight)
 
 - **Panel D (Bottom-Right):** Pie chart showing distribution of regions by risk level.
 
@@ -365,7 +371,7 @@ Raw measurements were aggregated to annual means for trend analysis, with monthl
 
 ### Figure 14: Future Projections
 
-![Future Projections](plots/future_projections.png)
+![Future Projections](assets/future_projections.png)
 
 **Description:** This four-panel figure presents water level projections:
 
@@ -399,7 +405,7 @@ Raw measurements were aggregated to annual means for trend analysis, with monthl
 
 ### Figure 15: Comprehensive Statistics
 
-![Comprehensive Statistics](plots/comprehensive_statistics.png)
+![Comprehensive Statistics](assets/comprehensive_statistics.png)
 
 **Description:** This figure provides a publication-ready statistical summary:
 
@@ -436,16 +442,16 @@ Raw measurements were aggregated to annual means for trend analysis, with monthl
 1. **Regional Variability:** Groundwater conditions vary substantially across the nine MSAs, reflecting differences in aquifer characteristics, climate, and water management practices.
 
 2. **Recovery Success Stories:**
-   - **Dallas:** Shows remarkable recovery (+10.6 ft/year rising), likely due to effective groundwater management and shifting to surface water supplies
-   - **Chicago:** Significant improvement (-2.3 ft/year rising), possibly due to reduced industrial pumping and conservation
-   - **San Francisco:** Moderate recovery (-1.0 ft/year rising), potentially reflecting drought response and conservation measures
+    - **Dallas:** Shows remarkable recovery (+10.6 ft/year rising), likely due to effective groundwater management and shifting to surface water supplies
+    - **Chicago:** Significant improvement (-2.3 ft/year rising), possibly due to reduced industrial pumping and conservation
+    - **San Francisco:** Moderate recovery (-1.0 ft/year rising), potentially reflecting drought response and conservation measures
 
 3. **Areas of Concern:**
-   - **Washington DC:** Only region with statistically significant declining trend (+1.1 ft/year deepening), warranting further investigation and management intervention
+    - **Washington DC:** Only region with statistically significant declining trend (+1.1 ft/year deepening), warranting further investigation and management intervention
 
 4. **Stable Regions:**
-   - **Miami:** Most stable conditions with lowest variability, indicating well-balanced recharge and withdrawal
-   - **Boston and Houston:** Near equilibrium with no significant trends
+    - **Miami:** Most stable conditions with lowest variability, indicating well-balanced recharge and withdrawal
+    - **Boston and Houston:** Near equilibrium with no significant trends
 
 5. **Data Quality:** All regions have excellent data quality spanning 55 years, providing robust foundation for trend analysis.
 
@@ -553,4 +559,4 @@ Raw measurements were aggregated to annual means for trend analysis, with monthl
 }
 ```
 
-*Report generated automatically by Claude Opus 4.5 using results from full_workflow_csv_zipcodes.py*
+*Report generated automatically using pyGWRetrieval full_workflow_csv_zipcodes.py*

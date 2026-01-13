@@ -87,7 +87,7 @@ For more information, visit: https://github.com/example/pyGWRetrieval
     parser.add_argument(
         '--version', '-V',
         action='version',
-        version='%(prog)s 1.0.0'
+        version='%(prog)s 0.1.0'
     )
     
     parser.add_argument(

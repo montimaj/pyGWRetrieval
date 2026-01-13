@@ -414,7 +414,7 @@ The full example script includes:
 ## Next Steps
 
 - Read the [API Reference](api_reference.md) for detailed documentation
-- Check out [Examples](../examples/) for more use cases
+- Check out the [Case Study](case_study.md) for a comprehensive regional analysis example
 - Learn about [Advanced Usage](advanced_usage.md) for complex workflows
 
 ## Citation
