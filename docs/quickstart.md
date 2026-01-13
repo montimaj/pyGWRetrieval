@@ -331,12 +331,12 @@ plotter = GroundwaterPlotter(data)
 
 # Time series
 fig = plotter.plot_time_series()
-plt.savefig('time_series.png', dpi=150)
+plt.savefig('time_series.png', dpi=300)
 plt.close()
 
 # Annual summary
 fig = plotter.plot_annual_summary()
-plt.savefig('annual_summary.png', dpi=150)
+plt.savefig('annual_summary.png', dpi=300)
 plt.close()
 
 # 6. Export Data
@@ -394,14 +394,14 @@ for zipcode in data['source_zipcode'].unique()[:3]:  # Top 3
     # Time series for best well
     top_well = zipcode_data.groupby('site_no')['lev_dt'].count().idxmax()
     fig = plotter.plot_single_well(top_well)
-    fig.savefig(f'output/plots/timeseries_{zipcode}.png', dpi=150)
+    fig.savefig(f'output/plots/timeseries_{zipcode}.png', dpi=300)
     plt.close(fig)
 
 # 6. Cross-zipcode comparison
 fig, ax = plt.subplots(figsize=(10, 6))
 data.groupby('source_zipcode')['site_no'].nunique().plot(kind='bar', ax=ax)
 ax.set_title('Wells per Zip Code')
-fig.savefig('output/plots/wells_per_zipcode.png', dpi=150)
+fig.savefig('output/plots/wells_per_zipcode.png', dpi=300)
 ```
 
 The full example script includes:

@@ -510,7 +510,7 @@ fig = plotter.plot_wells_map(
     add_basemap=True,
     group_by_column='source_zipcode'
 )
-plt.savefig('wells_map.png', dpi=150)
+plt.savefig('wells_map.png', dpi=300)
 ```
 
 ---
@@ -573,7 +573,7 @@ data = gw.get_data_by_zipcodes_csv('locations.csv', zipcode_column='zip')
 
 # Create 4-panel comparison map
 fig = create_comparison_map(data, figsize=(18, 12))
-plt.savefig('comparison_map.png', dpi=150)
+plt.savefig('comparison_map.png', dpi=300)
 ```
 
 ---

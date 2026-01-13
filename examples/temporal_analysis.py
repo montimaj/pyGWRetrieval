@@ -276,7 +276,7 @@ def create_temporal_visualizations(
     ax4.grid(True, alpha=0.3)
     
     plt.tight_layout()
-    plt.savefig('output/temporal_analysis.png', dpi=150, bbox_inches='tight')
+    plt.savefig('output/temporal_analysis.png', dpi=300, bbox_inches='tight')
     print("Saved: output/temporal_analysis.png")
     plt.close()
 

@@ -115,7 +115,7 @@ def main():
     fig1 = plotter.plot_time_series(
         title='Groundwater Levels - Carson City Area'
     )
-    plt.savefig('output/time_series.png', dpi=150, bbox_inches='tight')
+    plt.savefig('output/time_series.png', dpi=300, bbox_inches='tight')
     print("Saved: output/time_series.png")
     plt.close()
     
@@ -127,19 +127,19 @@ def main():
             show_trend=True,
             show_stats=True
         )
-        plt.savefig('output/single_well.png', dpi=150, bbox_inches='tight')
+        plt.savefig('output/single_well.png', dpi=300, bbox_inches='tight')
         print("Saved: output/single_well.png")
         plt.close()
     
     # Monthly boxplot
     fig3 = plotter.plot_monthly_boxplot()
-    plt.savefig('output/monthly_boxplot.png', dpi=150, bbox_inches='tight')
+    plt.savefig('output/monthly_boxplot.png', dpi=300, bbox_inches='tight')
     print("Saved: output/monthly_boxplot.png")
     plt.close()
     
     # Annual summary
     fig4 = plotter.plot_annual_summary()
-    plt.savefig('output/annual_summary.png', dpi=150, bbox_inches='tight')
+    plt.savefig('output/annual_summary.png', dpi=300, bbox_inches='tight')
     print("Saved: output/annual_summary.png")
     plt.close()
     
@@ -163,7 +163,7 @@ def main():
             cmap='RdYlBu_r',  # Red=deep water, Blue=shallow
             add_basemap=True  # Add OpenStreetMap-style basemap
         )
-        plt.savefig('output/spatial_map.png', dpi=150, bbox_inches='tight')
+        plt.savefig('output/spatial_map.png', dpi=300, bbox_inches='tight')
         print("Saved: output/spatial_map.png")
         plt.close()
     except ImportError:

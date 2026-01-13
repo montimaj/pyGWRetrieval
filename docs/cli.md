@@ -290,7 +290,7 @@ pygwretrieval plot --input FILE --output FILE [options]
 | `--wells SITE [SITE ...]` | Well site numbers to plot |
 | `--title TEXT` | Custom plot title |
 | `--figsize W H` | Figure size in inches (default: 12 8) |
-| `--dpi DPI` | Output resolution (default: 150) |
+| `--dpi DPI` | Output resolution (default: 300) |
 | `--show-trend` | Show trend line (single-well plot) |
 | `--show-stats` | Show statistics box (single-well plot) |
 
@@ -349,7 +349,7 @@ pygwretrieval map --input FILE --output FILE [options]
 | `--marker-size SIZE` | Marker size (default: auto-scaled) |
 | `--title TEXT` | Custom map title |
 | `--figsize W H` | Figure size in inches |
-| `--dpi DPI` | Output resolution (default: 150) |
+| `--dpi DPI` | Output resolution (default: 300) |
 | `--comparison` | Create 4-panel comparison map |
 
 ### Basemap Sources

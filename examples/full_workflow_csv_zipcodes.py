@@ -201,15 +201,16 @@ def main():
     print("-" * 70)
     
     # Save combined data
-    combined_file = output_dir / "all_groundwater_data.csv"
-    gw.to_csv(combined_file)
+    combined_file = output_dir / "all_groundwater_data.parquet" # csv is too large and slow
+    gw.save_to_parquet(combined_file, data)
+    gw.to_csv(output_dir / "all_groundwater_data.csv", data)
     print(f"\n✓ Saved combined data to: {combined_file}")
     
     # Save data per zip code
     print(f"\nSaving data per zip code to: {data_per_zipcode_dir}")
     saved_files = gw.save_data_per_zipcode(
         output_dir=data_per_zipcode_dir,
-        file_format='csv',
+        file_format='parquet',
         prefix='gw_data'
     )
     
@@ -309,7 +310,7 @@ def main():
             )
             if fig is not None:
                 plot_file = plots_dir / f"timeseries_{zipcode}_{top_well}.png"
-                fig.savefig(plot_file, dpi=150, bbox_inches='tight')
+                fig.savefig(plot_file, dpi=300, bbox_inches='tight')
                 plt.close(fig)
                 print(f"    ✓ Saved: {plot_file.name}")
         except Exception as e:
@@ -325,7 +326,7 @@ def main():
             )
             if fig is not None:
                 plot_file = plots_dir / f"multi_well_{zipcode}.png"
-                fig.savefig(plot_file, dpi=150, bbox_inches='tight')
+                fig.savefig(plot_file, dpi=300, bbox_inches='tight')
                 plt.close(fig)
                 print(f"    ✓ Saved: {plot_file.name}")
         except Exception as e:
@@ -339,7 +340,7 @@ def main():
             )
             if fig is not None:
                 plot_file = plots_dir / f"monthly_boxplot_{zipcode}_{top_well}.png"
-                fig.savefig(plot_file, dpi=150, bbox_inches='tight')
+                fig.savefig(plot_file, dpi=300, bbox_inches='tight')
                 plt.close(fig)
                 print(f"    ✓ Saved: {plot_file.name}")
         except Exception as e:
@@ -393,7 +394,7 @@ def main():
         
         plt.tight_layout()
         plot_file = plots_dir / "comparison_all_zipcodes.png"
-        fig.savefig(plot_file, dpi=150, bbox_inches='tight')
+        fig.savefig(plot_file, dpi=300, bbox_inches='tight')
         plt.close(fig)
         print(f"  ✓ Saved: {plot_file.name}")
         
@@ -422,7 +423,7 @@ def main():
         )
         if fig is not None:
             plot_file = plots_dir / "spatial_map_all_wells.png"
-            fig.savefig(plot_file, dpi=150, bbox_inches='tight')
+            fig.savefig(plot_file, dpi=300, bbox_inches='tight')
             plt.close(fig)
             print(f"    ✓ Saved: {plot_file.name}")
         
@@ -434,7 +435,7 @@ def main():
         )
         if fig is not None:
             plot_file = plots_dir / "spatial_comparison_map.png"
-            fig.savefig(plot_file, dpi=150, bbox_inches='tight')
+            fig.savefig(plot_file, dpi=300, bbox_inches='tight')
             plt.close(fig)
             print(f"    ✓ Saved: {plot_file.name}")
         

@@ -493,8 +493,8 @@ Plot types:
     plot_parser.add_argument(
         '--dpi',
         type=int,
-        default=150,
-        help='Output resolution (default: 150)'
+        default=300,
+        help='Output resolution (default: 300)'
     )
     
     plot_parser.add_argument(
@@ -605,8 +605,8 @@ Features:
     map_parser.add_argument(
         '--dpi',
         type=int,
-        default=150,
-        help='Output resolution (default: 150)'
+        default=300,
+        help='Output resolution (default: 300)'
     )
     
     map_parser.add_argument(

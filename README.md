@@ -291,11 +291,11 @@ fig = plot_wells_map(
     add_basemap=True,  # Add OpenStreetMap-style basemap
     group_by_column='source_zipcode'  # Label by zip code
 )
-plt.savefig('wells_map.png', dpi=150)
+plt.savefig('wells_map.png', dpi=300)
 
 # Create a 4-panel comparison map (mean, min, max, record count)
 fig = create_comparison_map(data, figsize=(18, 12))
-plt.savefig('comparison_map.png', dpi=150)
+plt.savefig('comparison_map.png', dpi=300)
 ```
 
 ### Parallel Processing
