@@ -415,7 +415,7 @@ The full example script includes:
 
 - Read the [API Reference](api_reference.md) for detailed documentation
 - Check out the [Case Study](case_study.md) for a comprehensive regional analysis example
-- Learn about [Advanced Usage](advanced_usage.md) for complex workflows
+- See the [Full Analysis Report](analysis_report.md) for detailed results and visualizations
 
 ## Citation
 
