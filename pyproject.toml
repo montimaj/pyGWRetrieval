@@ -1,0 +1,154 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pyGWRetrieval"
+version = "0.1.0"
+description = "A Python package for retrieving USGS groundwater level data"
+readme = "README.md"
+license = {text = "MIT"}
+requires-python = ">=3.8"
+authors = [
+    {name = "Sayantan Majumdar", email = "sayantan.majumdar@dri.edu"}
+]
+maintainers = [
+    {name = "Sayantan Majumdar", email = "sayantan.majumdar@dri.edu"}
+]
+keywords = [
+    "groundwater",
+    "USGS",
+    "hydrology",
+    "water-resources",
+    "data-retrieval",
+    "NWIS",
+    "geospatial",
+    "time-series"
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Topic :: Scientific/Engineering :: Hydrology",
+    "Topic :: Scientific/Engineering :: Groundwater",
+]
+
+dependencies = [
+    "dataretrieval>=1.0.0",
+    "pandas>=1.3.0",
+    "geopandas>=0.10.0",
+    "shapely>=1.8.0",
+    "pyproj>=3.0.0",
+    "pgeocode>=0.3.0",
+    "matplotlib>=3.4.0",
+    "numpy>=1.20.0",
+    "dask>=2022.1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=3.0.0",
+    "black>=22.0.0",
+    "flake8>=4.0.0",
+    "mypy>=0.950",
+    "isort>=5.10.0",
+]
+docs = [
+    "sphinx>=4.0.0",
+    "sphinx-rtd-theme>=1.0.0",
+    "myst-parser>=0.18.0",
+    "sphinx-autodoc-typehints>=1.18.0",
+]
+viz = [
+    "seaborn>=0.11.0",
+    "contextily>=1.2.0",
+]
+distributed = [
+    "dask[distributed]>=2022.1.0",
+    "bokeh>=2.4.0",
+]
+all = [
+    "pyGWRetrieval[dev,docs,viz,distributed]",
+]
+
+[project.urls]
+Homepage = "https://github.com/example/pyGWRetrieval"
+Documentation = "https://pygwretrieval.readthedocs.io"
+Repository = "https://github.com/example/pyGWRetrieval"
+Changelog = "https://github.com/example/pyGWRetrieval/blob/main/CHANGELOG.md"
+"Bug Tracker" = "https://github.com/example/pyGWRetrieval/issues"
+
+[project.scripts]
+pygwretrieval = "pyGWRetrieval.cli:main"
+
+[tool.setuptools]
+packages = ["pyGWRetrieval"]
+
+[tool.setuptools.package-data]
+pyGWRetrieval = ["py.typed"]
+
+[tool.black]
+line-length = 88
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+include = '\.pyi?$'
+exclude = '''
+/(
+    \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | _build
+  | buck-out
+  | build
+  | dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+use_parentheses = true
+ensure_newline_before_comments = true
+line_length = 88
+
+[tool.mypy]
+python_version = "3.8"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+addopts = "-ra -q --cov=pyGWRetrieval --cov-report=term-missing"
+testpaths = [
+    "tests",
+]
+pythonpath = [
+    "."
+]
+
+[tool.coverage.run]
+source = ["pyGWRetrieval"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+]

@@ -1,0 +1,100 @@
+MSA,City,ZipCode
+Chicago,Chicago,60601
+Chicago,Aurora,60502
+Chicago,Evanston,60201
+Chicago,Oak Park,60301
+Chicago,Naperville,60540
+San Francisco,San Francisco,94102
+San Francisco,Oakland,94601
+San Francisco,Berkeley,94701
+San Francisco,Redwood City,94061
+San Francisco,Daly City,94014
+San Francisco,Fremont,94536
+San Francisco,San Rafael,94901
+San Francisco,San Mateo,94401
+San Francisco,Walnut Creek,94595
+San Francisco,Hayward,94540
+San Francisco,Novato,94945
+San Francisco,Richmond,94801
+San Francisco,Concord,94518
+Philadhepia,Philadelphia,19019
+Philadhepia,West Chester,19380
+Philadhepia,Wilmington,19801
+Philadhepia,Newark,07101
+Dallas,Dallas,75201
+Dallas,Fort Worth,76101
+Dallas,Denton,76201
+Dallas,Plano,75023
+Dallas,Arlington,76001
+Dallas,Frisco,75033
+Dallas,Granbury,76048
+Dallas,Grand Prairie,75050
+Dallas,Irving,75014
+Dallas,Euless,76039
+Dallas,Duncanville,75116
+Dallas,Lewisville,75029
+Dallas,Richardson,75080
+Dallas,Mckinney,75069
+Washington,Washington,20001
+Washington,Arlington,22201
+Washington,Alexandria,22301
+Washington,Springfield,22150
+Washington,Fredericksburg,22401
+Washington,Fairfax,22030
+Washington,Woodbridge,22191
+Washington,Hyattsville,20781
+Washington,Silver Spring,20901
+Washington,Ashburn,20146
+Washington,Manassas,20108
+Washington,Frederick,21701
+Washington,Falls Church,22040
+Washington,Sterling,20163
+Washington,Rockville,23146
+Washington,Vienna,22180
+Washington,Mc Lean,22101
+Washington,Leesburg,20175
+Washington,Bethesda,20810
+Washington,Bowie,20715
+Houston,Houston,77001
+Houston,Spring,77373
+Houston,Galveston,77550
+Houston,Katy,77449
+Houston,Humble,77338
+Houston,Richmond,77406
+Boston,Cambridge,02138
+Boston,Boston,02108
+Boston,Brockton,02301
+Boston,Somerville,02143
+Boston,Dorchester,02121
+Boston,Arlington,02474
+Boston,Quincy,02169
+Boston,Salem,01970
+Boston,Waltham,02451
+New York,New York,10001
+New York,Newark,14513
+New York,Jersey City,07097
+New York,Yonkers,10701
+New York,Great Neck,11020
+New York,Mount Vernon,10550
+New York,Edison,08817
+New York,Poughkeepsie,12601
+New York,Elizabeth,07201
+New York,Paterson,07501
+New York,Milford,13807
+New York,New Rochelle,10801
+New York,Valley Stream,11580
+New York,White Plains,10601
+Miami,Hollywood,33019
+Miami,Miami Beach,33109
+Miami,Miami,33101
+Miami,Lake Worth,33449
+Miami,Fort Lauderdale,33301
+Miami,Homestead,33030
+Miami,West Palm Beach,33401
+Miami,Deerfield Beach,33441
+Miami,Boca Raton,33427
+Miami,Delray Beach,33444
+Miami,Pompano Beach,33060
+Miami,Boynton Beach,33424
+Miami,Jupiter,33458
+Miami,Hialeah,33002
