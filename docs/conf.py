@@ -11,8 +11,8 @@ sys.path.insert(0, os.path.abspath('..'))
 
 # -- Project information -----------------------------------------------------
 project = 'pyGWRetrieval'
-copyright = '2024, pyGWRetrieval Development Team'
-author = 'pyGWRetrieval Development Team'
+copyright = '2026, Sayantan Majumdar'
+author = 'Sayantan Majumdar'
 release = '0.1.0'
 
 # -- General configuration ---------------------------------------------------

@@ -20,12 +20,12 @@ Example:
     >>> data = gw.get_data_by_zipcode('89701', buffer_miles=10)
     >>> data.to_csv('groundwater_data.csv')
 
-Author: pyGWRetrieval Development Team
+Author: Sayantan Majumdar
 License: MIT
 """
 
 __version__ = "0.1.0"
-__author__ = "pyGWRetrieval Development Team"
+__author__ = "Sayantan Majumdar"
 
 from .retrieval import GroundwaterRetrieval
 from .spatial import (
