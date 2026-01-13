@@ -621,6 +621,27 @@ The package retrieves groundwater level data with the following columns:
 - pyarrow (Parquet support)
 - scipy (trend analysis)
 
+### Storage Requirements
+
+Storage requirements vary based on the number of zip codes, buffer distance, and data sources queried. Below are example estimates based on the `full_workflow_csv_zipcodes.py` example (99 zip codes, 25-mile buffer, gwlevels source, ~8M records):
+
+| Component | Size | Description |
+|-----------|------|-------------|
+| Combined Parquet | ~80 MB | All retrieved groundwater data |
+| Per-zipcode data | ~130 MB | Individual parquet files per zip code |
+| Wells GeoJSON | ~25 MB | Well locations with metadata |
+| Aggregated CSVs | ~27 MB | Monthly and annual aggregations |
+| Visualization plots | ~15 MB | 15 PNG figures at 300 DPI |
+| Analysis CSVs | ~2 MB | Trends, statistics, projections |
+| **Total** | **~275 MB** | Complete workflow output |
+
+**Scaling estimates:**
+- ~3 MB per 1,000 wells retrieved
+- ~10 KB per groundwater measurement record (Parquet format)
+- Plot sizes: ~0.5-1.5 MB each at 300 DPI
+
+> **Tip**: Use Parquet format (default) for efficient storage. Parquet files are ~60% smaller than equivalent CSV files and load significantly faster.
+
 ## Examples
 
 The `examples/` directory contains several example scripts:
@@ -671,6 +692,55 @@ This workflow:
 - Saves data both combined and per zip code
 - Performs monthly and annual aggregations
 - Creates time series, boxplot, and comparison visualizations
+
+## Case Study: Regional Groundwater Analysis of 9 U.S. Metropolitan Areas
+
+The `full_workflow_csv_zipcodes.py` example demonstrates a comprehensive regional groundwater analysis across nine major U.S. Metropolitan Statistical Areas (MSAs): New York, Miami, Washington DC, Houston, Boston, Philadelphia, San Francisco, Chicago, and Dallas.
+
+### Study Overview
+
+| Metric | Value |
+|--------|-------|
+| Total Records | 7,995,927 |
+| Monitoring Wells | 33,018 |
+| Temporal Coverage | 1970-2025 (55 years) |
+| Metropolitan Areas | 9 |
+| Zip Codes Analyzed | 99 |
+| Visualizations Generated | 15 figures |
+
+### Key Findings
+
+- **Dallas** shows remarkable groundwater recovery (+10.6 ft/year rising trend)
+- **Washington DC** is the only region with significant declining trend (+1.1 ft/year deepening)
+- **Miami** demonstrates the most stable groundwater conditions (lowest variability)
+- **5 of 9 regions** show statistically significant long-term trends (p < 0.05)
+
+### Generated Analyses
+
+The workflow produces 15 publication-ready visualizations:
+
+1. **Regional Trends** - Trend analysis by MSA
+2. **Data Quality** - Coverage and density metrics
+3. **Distributions** - Water level statistical distributions
+4. **Temporal Patterns** - Decadal and seasonal patterns
+5. **Monthly/Annual Boxplots** - Seasonal and inter-annual variability
+6. **Correlation & Clustering** - Inter-regional relationships
+7. **Extreme Events** - Drought and anomaly analysis
+8. **Rate of Change** - Trend acceleration analysis
+9. **Geographic Patterns** - Coastal vs. inland comparisons
+10. **Change Point Detection** - Regime shift identification
+11. **Sustainability Index** - Risk assessment (0-100 scale)
+12. **Future Projections** - 5, 10, 20-year water level forecasts
+13. **Comprehensive Statistics** - Publication-ready summary tables
+
+### Output Files
+
+- **Data**: Parquet files (~275 MB total), GeoJSON well locations
+- **Analysis**: CSV files with trends, projections, sustainability metrics
+- **Report**: Auto-generated markdown report (`ANALYSIS_REPORT.md`)
+- **Visualizations**: 15 PNG figures at 300 DPI
+
+See [examples/output/ANALYSIS_REPORT.md](examples/output/ANALYSIS_REPORT.md) for the complete analysis report.
 
 ## Contributing
 

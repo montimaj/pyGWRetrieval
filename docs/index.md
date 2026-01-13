@@ -99,6 +99,23 @@ pygwretrieval map --input data.csv --output map.png --basemap
 - GitHub Issues: [Report bugs or request features](https://github.com/montimaj/pyGWRetrieval/issues)
 - Documentation: [Read the Docs](https://pygwretrieval.readthedocs.io)
 
+## Case Study: Regional Groundwater Analysis
+
+The package includes a comprehensive case study analyzing groundwater trends across nine major U.S. metropolitan areas (New York, Miami, Washington DC, Houston, Boston, Philadelphia, San Francisco, Chicago, Dallas) using 55 years of USGS data.
+
+**Key Results:**
+- 7.9M groundwater measurements from 33,018 wells
+- 15 publication-ready visualizations
+- Sustainability indices and future projections
+- Auto-generated analysis report
+
+**Highlights:**
+- Dallas shows +10.6 ft/year recovery (best performing)
+- Washington DC shows +1.1 ft/year decline (needs attention)
+- Miami has most stable conditions
+
+Run `examples/full_workflow_csv_zipcodes.py` to reproduce the analysis. See `examples/output/ANALYSIS_REPORT.md` for the complete report.
+
 ## Citation
 
 If you use this package in your research, please cite:

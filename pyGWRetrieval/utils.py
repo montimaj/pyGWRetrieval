@@ -77,8 +77,20 @@ def save_to_parquet(
     filepath = Path(filepath)
     filepath.parent.mkdir(parents=True, exist_ok=True)
     
-    data.to_parquet(filepath, compression=compression, **kwargs)
-    logger.info(f"Saved {len(data)} records to {filepath}")
+    # Convert object columns with mixed types to string to avoid pyarrow errors
+    df = data.copy()
+    for col in df.columns:
+        if df[col].dtype == 'object':
+            # Check for mixed types by seeing if conversion to string changes anything
+            try:
+                df[col] = df[col].astype(str)
+                # Replace 'nan' and 'None' strings with actual NaN
+                df[col] = df[col].replace({'nan': pd.NA, 'None': pd.NA, 'NaT': pd.NA})
+            except Exception:
+                pass  # If conversion fails, keep original
+    
+    df.to_parquet(filepath, compression=compression, **kwargs)
+    logger.info(f"Saved {len(df)} records to {filepath}")
 
 
 def load_from_csv(
@@ -330,7 +342,9 @@ def get_data_coverage(
     """
     if not pd.api.types.is_datetime64_any_dtype(data[date_column]):
         data = data.copy()
-        data[date_column] = pd.to_datetime(data[date_column])
+        data[date_column] = pd.to_datetime(
+            data[date_column], format='mixed', errors='coerce'
+        )
     
     coverage = data.groupby(site_column).agg(
         first_date=(date_column, 'min'),

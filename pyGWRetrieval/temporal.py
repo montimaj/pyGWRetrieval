@@ -115,7 +115,9 @@ class TemporalAggregator:
         
         # Convert to datetime if needed
         if not pd.api.types.is_datetime64_any_dtype(self.data[self.date_column]):
-            self.data[self.date_column] = pd.to_datetime(self.data[self.date_column])
+            self.data[self.date_column] = pd.to_datetime(
+                self.data[self.date_column], format='mixed', errors='coerce'
+            )
         
         # Ensure value column is numeric
         self.data[self.value_column] = pd.to_numeric(

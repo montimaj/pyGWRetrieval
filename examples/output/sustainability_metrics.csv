@@ -1,0 +1,10 @@
+MSA,sustainability_index,long_term_slope,recent_slope,cv_percent,data_quality,recovery_indicator,risk_level
+New York,63.3,0.3454,-0.4873,19.0,100,1,Low
+Miami,66.9,-0.0344,0.0136,11.4,100,0,Low
+Washington,40.4,1.0997,3.9864,28.7,100,0,Medium
+Houston,62.7,0.068,0.786,8.8,100,0,Low
+Boston,65.9,-0.003,-0.1583,16.3,100,1,Low
+Philadelphia,68.0,-0.2324,-0.0258,14.8,100,0,Low
+San Francisco,60.0,-1.025,-0.3811,74.0,100,0,Medium
+Chicago,68.1,-2.2557,-0.8268,86.7,100,0,Low
+Dallas,73.0,-10.6402,-0.5084,65.0,100,0,Low

@@ -1,0 +1,10 @@
+MSA,n_wells,n_records,mean_water_level_ft,avg_slope_ft_per_year,wells_rising,wells_falling,wells_stable,wells_significant_trend,dominant_trend
+New York,6375,3025035,37.55,-0.0788,1355,1134,0,682,rising
+Miami,1718,1408186,6.92,-0.0126,766,570,0,320,rising
+Washington,8184,1342912,71.49,0.6326,427,656,0,448,falling
+Houston,2283,651355,211.01,0.4462,637,607,0,835,rising
+Boston,2273,583494,12.53,0.1423,101,72,0,38,rising
+Philadelphia,11177,496196,35.4,-0.2006,1284,916,0,598,rising
+San Francisco,1073,320785,44.78,-0.7154,300,235,0,158,rising
+Chicago,956,91506,59.34,1.3191,97,161,0,68,falling
+Dallas,140,76458,363.37,0.087,62,14,0,10,rising

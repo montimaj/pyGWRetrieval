@@ -1,0 +1,22 @@
+# Include package files
+include LICENSE
+include README.md
+include pyproject.toml
+
+# Include examples (scripts only, not output)
+recursive-include examples *.py
+recursive-include examples *.csv
+
+# Include documentation
+recursive-include docs *.md
+recursive-include docs *.rst
+
+# Exclude output folders and generated files
+prune examples/output
+prune **/__pycache__
+prune **/*.egg-info
+global-exclude *.pyc
+global-exclude *.pyo
+global-exclude *.parquet
+global-exclude *.geojson
+global-exclude .DS_Store
