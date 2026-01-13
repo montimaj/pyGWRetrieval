@@ -89,7 +89,7 @@ def main():
     # Parameters
     START_DATE = "1970-01-01"
     END_DATE = None  # Uses current date (present)
-    BUFFER_MILES = 100
+    BUFFER_MILES = 25
     ZIPCODE_COLUMN = "ZipCode"
     
     # Data sources: 'gwlevels', 'dv', 'iv', or 'all'
