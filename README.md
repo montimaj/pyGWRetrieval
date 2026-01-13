@@ -2,12 +2,10 @@
 
 A Python package for retrieving and analyzing USGS groundwater level data.
 
-[![CI](https://github.com/montimaj/pyGWRetrieval/workflows/CI/badge.svg)](https://github.com/montimaj/pyGWRetrieval/actions/workflows/ci.yml)
-[![Documentation](https://github.com/montimaj/pyGWRetrieval/workflows/Deploy%20Documentation/badge.svg)](https://montimaj.github.io/pyGWRetrieval/)
-[![PyPI](https://img.shields.io/pypi/v/pyGWRetrieval.svg)](https://pypi.org/project/pyGWRetrieval/)
-[![Python Version](https://img.shields.io/pypi/pyversions/pyGWRetrieval.svg)](https://pypi.org/project/pyGWRetrieval/)
+[![GitHub Pages](https://img.shields.io/badge/docs-GitHub%20Pages-blue?logo=github)](https://montimaj.github.io/pyGWRetrieval/)
+[![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=white)](https://www.python.org/)
+[![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![codecov](https://codecov.io/gh/montimaj/pyGWRetrieval/branch/main/graph/badge.svg)](https://codecov.io/gh/montimaj/pyGWRetrieval)
 
 ## Overview
 
