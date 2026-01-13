@@ -1,5 +1,5 @@
 # GitHub Pages documentation workflow
-# Builds and deploys Sphinx documentation to GitHub Pages
+# Builds and deploys MkDocs documentation to GitHub Pages
 
 name: Deploy Documentation
 
@@ -9,6 +9,7 @@ on:
     paths:
       - 'docs/**'
       - 'pyGWRetrieval/**'
+      - 'mkdocs.yml'
       - '.github/workflows/docs.yml'
   workflow_dispatch:
 
@@ -34,7 +35,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: "3.10"
+          python-version: "3.11"
 
       - name: Install system dependencies
         run: |
@@ -46,15 +47,14 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e ".[docs]"
 
-      - name: Build Sphinx documentation
+      - name: Build MkDocs documentation
         run: |
-          cd docs
-          make html
+          mkdocs build --strict
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: docs/_build/html
+          path: site
 
   deploy:
     environment:
