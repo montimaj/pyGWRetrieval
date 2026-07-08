@@ -127,21 +127,20 @@ pyGWRetrieval/
 │   ├── retrieval.py         # Core GroundwaterRetrieval class
 │   ├── spatial.py           # Spatial utilities (zip codes, geometries, buffers)
 │   ├── temporal.py          # Temporal aggregation and trend analysis
+│   ├── interpolation.py     # Water-table depth interpolation
 │   ├── visualization.py     # Plotting and visualization tools
 │   ├── parallel.py          # Dask-based parallel processing
 │   ├── cli.py               # Command-line interface
 │   └── utils.py             # Helper functions and utilities
-├── docs/                    # Documentation (Sphinx)
+├── docs/                    # Documentation (MkDocs)
 │   ├── index.md             # Documentation home
 │   ├── quickstart.md        # Getting started guide
+│   ├── interpolation.md     # Interpolation guide
 │   ├── api_reference.md     # API documentation
 │   └── cli.md               # CLI documentation
-├── examples/                # Example scripts
-│   ├── basic_usage.py       # Simple usage examples
-│   ├── full_workflow_csv_zipcodes.py  # Complete workflow
-│   ├── multi_source_example.py        # Multi-source retrieval
-│   ├── temporal_analysis.py           # Temporal aggregation
-│   └── advanced_spatial.py            # Spatial queries
+├── examples/                # Example sets (each with its own README)
+│   ├── ucrc/                # Upper Colorado Basin water-table depth mapping
+│   └── msa_analysis/        # 9-MSA case study + general usage scripts
 ├── tests/                   # Unit tests
 ├── pyproject.toml           # Package configuration
 ├── setup.py                 # Setup script
@@ -804,16 +803,11 @@ Storage requirements vary based on the number of zip codes, buffer distance, and
 
 ## Examples
 
-The [`examples/`](examples/README.md) directory contains several example
-scripts — see the [examples README](examples/README.md) for the full index and
-a detailed Upper Colorado River Basin water-table-depth mapping walkthrough:
+The [`examples/`](examples/README.md) directory holds two self-contained example
+sets, each with its own README:
 
-- **`basic_usage.py`** - Basic data retrieval and visualization
-- **`temporal_analysis.py`** - Temporal aggregation and trend analysis
-- **`advanced_spatial.py`** - Advanced spatial queries
-- **`multi_source_example.py`** - Retrieving from multiple USGS sources
-- **`full_workflow_csv_zipcodes.py`** - Complete end-to-end workflow
-- **`ucrc/`** - Upper Colorado River Basin water-table depth mapping
+- [**`examples/ucrc/`**](examples/ucrc/README.md) — **Upper Colorado River Basin**: large-area retrieval, unconfined-aquifer filtering, and gridded water-table depth mapping with a five-method interpolation comparison.
+- [**`examples/msa_analysis/`**](examples/msa_analysis/README.md) — **Metropolitan analysis & general usage**: a 9-MSA regional case study (`full_workflow_csv_zipcodes.py`) plus general scripts (`basic_usage.py`, `temporal_analysis.py`, `advanced_spatial.py`, `multi_source_example.py`).
 
 ### Full Workflow Example
 
@@ -906,7 +900,7 @@ The workflow produces 15 publication-ready visualizations:
 - **Report**: Auto-generated markdown report (`ANALYSIS_REPORT.md`)
 - **Visualizations**: 15 PNG figures at 300 DPI
 
-See [examples/output/ANALYSIS_REPORT.md](examples/output/ANALYSIS_REPORT.md) for the complete analysis report.
+See [examples/msa_analysis/output/ANALYSIS_REPORT.md](examples/msa_analysis/output/ANALYSIS_REPORT.md) for the complete analysis report.
 
 ## Contributing
 

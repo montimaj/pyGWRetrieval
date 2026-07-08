@@ -351,7 +351,7 @@ print("\nComplete! Files saved.")
 
 ## Full Workflow: CSV Zip Codes Example
 
-For a complete end-to-end workflow processing multiple zip codes from a CSV file, see `examples/full_workflow_csv_zipcodes.py`. This example demonstrates:
+For a complete end-to-end workflow processing multiple zip codes from a CSV file, see `examples/msa_analysis/full_workflow_csv_zipcodes.py`. This example demonstrates:
 
 ```python
 from pyGWRetrieval import GroundwaterRetrieval, TemporalAggregator, GroundwaterPlotter

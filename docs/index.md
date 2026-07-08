@@ -115,7 +115,7 @@ The package includes a comprehensive case study analyzing groundwater trends acr
 - Washington DC shows +1.1 ft/year decline (needs attention)
 - Miami has most stable conditions
 
-Run `examples/full_workflow_csv_zipcodes.py` to reproduce the analysis. See `examples/output/ANALYSIS_REPORT.md` for the complete report.
+Run `examples/msa_analysis/full_workflow_csv_zipcodes.py` to reproduce the analysis. See `examples/msa_analysis/output/ANALYSIS_REPORT.md` for the complete report.
 
 ## Citation
 
