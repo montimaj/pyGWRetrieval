@@ -7,10 +7,11 @@ Complete API documentation for pyGWRetrieval.
 ### GroundwaterRetrieval
 
 ```python
-class GroundwaterRetrieval(start_date='1900-01-01', end_date=None, data_sources='gwlevels')
+class GroundwaterRetrieval(start_date='1900-01-01', end_date=None, data_sources='dv')
 ```
 
-Main class for retrieving groundwater level data from USGS NWIS.
+Main class for retrieving groundwater level data via the USGS Water Data OGC API
+(with the legacy NWIS endpoints kept as an automatic fallback).
 
 #### Parameters
 
@@ -18,22 +19,22 @@ Main class for retrieving groundwater level data from USGS NWIS.
 |-----------|------|---------|-------------|
 | `start_date` | str | '1900-01-01' | Start date in 'YYYY-MM-DD' format |
 | `end_date` | str | None | End date in 'YYYY-MM-DD' format. Defaults to today |
-| `data_sources` | str \| List[str] | 'gwlevels' | USGS data sources to retrieve. See [Data Sources](#data-sources) |
+| `data_sources` | str \| List[str] | 'dv' | USGS data sources to retrieve. See [Data Sources](#data-sources) |
 
 #### Data Sources
 
-pyGWRetrieval supports three USGS NWIS data sources:
+pyGWRetrieval supports three USGS data sources (Water Data OGC API):
 
-| Source | API Function | Description |
+| Source | OGC Function | Description |
 |--------|-------------|-------------|
-| `gwlevels` | `get_gwlevels()` | Field groundwater-level measurements - discrete manual readings taken during field visits. Most accurate but infrequent. |
-| `dv` | `get_dv()` | Daily values - daily statistical summaries (mean, min, max) computed from continuous sensors. |
-| `iv` | `get_iv()` | Instantaneous values - current/historical observations at 15-60 minute intervals from continuous sensors. |
+| `gwlevels` | `get_field_measurements()` | Field groundwater-level measurements - discrete manual readings taken during field visits. Most accurate but infrequent. |
+| `dv` | `get_daily()` | Daily values - daily statistical summaries (mean, min, max) computed from continuous sensors. |
+| `iv` | `get_continuous()` | Instantaneous values - current/historical observations at 15-60 minute intervals from continuous sensors. |
 
 **Usage:**
 ```python
-# Single source (default)
-gw = GroundwaterRetrieval(data_sources='gwlevels')
+# Single source (default is 'dv')
+gw = GroundwaterRetrieval(data_sources='dv')
 
 # Multiple sources
 gw = GroundwaterRetrieval(data_sources=['gwlevels', 'dv'])
@@ -162,8 +163,35 @@ Retrieve data for specific USGS sites.
 
 **Example:**
 ```python
-sites = ['390000119000001', '390000119000002']
+sites = ['USGS-390000119000001', 'USGS-390000119000002']
 data = gw.get_data_by_sites(sites)
+```
+
+---
+
+##### `get_aquifer_info(site_numbers=None, batch_size=100, merge=True)`
+
+Retrieve aquifer attributes for wells. Water-table depth is only physically
+meaningful for **unconfined** aquifers, so use `aqfr_type_cd` to filter.
+
+**Parameters:**
+- `site_numbers` (List[str] | None): Sites to look up (defaults to `self.wells`)
+- `batch_size` (int): Sites per request (default: 100)
+- `merge` (bool): Merge the aquifer columns into `self.wells` (default: True)
+
+**Returns:** pd.DataFrame with `site_no` plus available of `aqfr_type_cd`,
+`aqfr_cd`, `nat_aqfr_cd`, `well_depth_va`.
+
+`aqfr_type_cd` values: `'U'` unconfined (water-table), `'C'` confined (artesian),
+`'M'` mixed, `'N'` unknown/other (may be blank when USGS has not classified the
+site).
+
+**Example:**
+```python
+gw = GroundwaterRetrieval(start_date='2000-01-01')
+data = gw.get_data_by_shapefile('basin.shp')
+aq = gw.get_aquifer_info()                      # also attaches aqfr_type_cd to gw.wells
+unconfined = gw.wells[gw.wells['aqfr_type_cd'] == 'U']
 ```
 
 ---
@@ -515,6 +543,85 @@ plt.savefig('wells_map.png', dpi=300)
 
 ---
 
+### WaterTableInterpolator
+
+```python
+WaterTableInterpolator(data, value_column='lev_va', site_column='site_no',
+                       date_column='datetime', lat_column='dec_lat_va',
+                       lon_column='dec_long_va', crs='EPSG:4326')
+```
+
+Interpolate point water levels into gridded **water-table depth maps**.
+Requires the `interp` extra for kriging and the scipy-based methods
+(`pip install pyGWRetrieval[interp]`); IDW works with the core install.
+
+#### Methods
+
+##### `interpolate(period='annual', method='idw', grid_size_m=1000.0, agg_func='mean', target_crs=None, boundary=None, clip_to_boundary=True, fill_outside=None, padding_m=0.0, min_points=None, power=2.0, n_neighbors=None, variogram_model='spherical', months=None, period_name='custom', water_year=False)`
+
+Interpolate onto a grid for each temporal window.
+
+**Key parameters:**
+- `period` (str): `'all'` (single map from the whole record), `'monthly'`, `'annual'`, or `'custom'` (requires `months`)
+- `method` (str): `'idw'`, `'kriging'`, `'linear'`, `'cubic'`, `'nearest'`, or `'rbf'`
+- `grid_size_m` (float): grid cell size **in meters**
+- `target_crs` (str | None): projected CRS for the grid (default: auto-UTM)
+- `boundary`: shapely geometry / GeoDataFrame used for extent and clipping
+- `fill_outside` (str | None): backfill cells the primary method leaves empty (e.g. `'nearest'` for `linear`/`cubic`, which do not extrapolate beyond the wells' convex hull)
+- `power`, `n_neighbors`: IDW options; `variogram_model`: kriging option
+
+**Returns:** `Dict[str, InterpolationResult]` keyed by window label (e.g. `'2021'`, `'2021-07'`, `'all'`).
+
+**Example:**
+```python
+from pyGWRetrieval import WaterTableInterpolator
+
+interp = WaterTableInterpolator(wtd, value_column='lev_va', date_column='datetime')
+grids = interp.interpolate(period='all', method='idw', grid_size_m=1000, boundary=basin)
+grids['all'].to_geotiff('wtd_mean.tif')
+```
+
+---
+
+### InterpolationResult
+
+A single interpolated grid (returned by `WaterTableInterpolator.interpolate`).
+
+**Attributes:** `grid` (2D array, `NaN` outside data/boundary), `x`, `y` (cell-center
+coords, meters), `crs`, `method`, `period`, `grid_size_m`, `points_xy`, `values`.
+
+**Methods:**
+- `plot(ax=None, cmap='RdYlBu_r', show_points=True, ...)` — plot the grid; returns a matplotlib `Axes`
+- `to_geotiff(filepath)` — write a north-up GeoTIFF (requires `rasterio`)
+- `to_xarray()` — return an `xarray.DataArray` (requires `xarray`)
+
+---
+
+### `idw_at_points(source_xy, source_values, target_xy, power=2.0, n_neighbors=12, leave_one_out=False)`
+
+Inverse-distance-weighted estimate at arbitrary scattered points (as opposed to
+a regular grid). Useful for cross-validation and consistency checks.
+
+**Parameters:**
+- `source_xy` (array, shape (n, 2)): observation coordinates in a metric CRS
+- `source_values` (array, shape (n,)): observed values
+- `target_xy` (array, shape (m, 2)): locations to estimate at
+- `power` (float): inverse-distance power (default: 2)
+- `n_neighbors` (int): nearest observations to use (default: 12)
+- `leave_one_out` (bool): if True, `target_xy == source_xy` and each point is estimated from the *others* (for residual/variability estimates)
+
+**Returns:** np.ndarray, shape (m,)
+
+**Example:**
+```python
+from pyGWRetrieval import idw_at_points
+
+# Leave-one-out residuals characterize a surface's spatial variability
+resid = observed - idw_at_points(xy, observed, xy, leave_one_out=True)
+```
+
+---
+
 ### Standalone Visualization Functions
 
 #### `plot_wells_map(data, wells_gdf=None, agg_func='mean', title=None, cmap='RdYlBu_r', add_basemap=True, group_by_column=None, **kwargs)`
@@ -709,31 +816,30 @@ Quick temporal aggregation function.
 
 ### Groundwater Level Data Columns
 
-Data retrieved from USGS NWIS contains the following columns:
+Data retrieved via the USGS Water Data OGC API is standardized to the following
+columns (identical across all sources):
 
 | Column | Description | Units | Source |
 |--------|-------------|-------|--------|
-| `site_no` | USGS site identification number | - | All |
-| `datetime` | Date/time of measurement (standardized) | Datetime | All |
-| `value` | Water level value (standardized) | Feet | All |
-| `data_source` | Origin data source | - | All (when multi-source) |
-| `lev_dt` | Date of water level measurement | Date | gwlevels |
-| `lev_tm` | Time of measurement | Time | gwlevels |
-| `lev_va` | Water level value | Feet below land surface | gwlevels, dv, iv |
-| `lev_acy_cd` | Water level accuracy code | - | gwlevels |
-| `lev_src_cd` | Source of water level data | - | gwlevels |
-| `lev_meth_cd` | Method of measurement code | - | gwlevels |
-| `lev_status_cd` | Status of the site at time of measurement | - | gwlevels |
+| `site_no` | Monitoring location id (e.g. `USGS-393000119000001`) | - | All |
+| `datetime` | Date/time of measurement (tz-naive) | Datetime | All |
+| `lev_dt` | Alias of `datetime` | Datetime | All |
+| `value` | Water level value | Depends on `parameter_cd` | All |
+| `lev_va` | Alias of `value` | Depends on `parameter_cd` | All |
+| `parameter_cd` | USGS parameter the value came from (`72019` depth, `62611` elevation, …) | - | All |
+| `data_source` | Origin data source (`gwlevels`, `dv`, `iv`) | - | All |
+| `unit_of_measure` | Unit reported by USGS (e.g. `ft`) | - | All |
+| `approval_status` | Approval status of the value | - | All |
+| `qualifier` | Data qualifier code(s) | - | All |
 
 ### Data Source Comparison
 
 | Feature | gwlevels | dv | iv |
 |---------|----------|----|----|
-| **Type** | Discrete manual | Daily summaries | High-frequency |
+| **OGC function** | `get_field_measurements` | `get_daily` | `get_continuous` |
+| **Type** | Discrete field measurements | Daily summaries | High-frequency |
 | **Frequency** | Sporadic (field visits) | Daily | 15-60 minutes |
 | **Accuracy** | Highest | Computed | Sensor-based |
-| **Time Column** | lev_dt + lev_tm | datetime | datetime |
-| **Value Column** | lev_va | parameter-specific | parameter-specific |
 | **Best For** | Long-term trends | Daily monitoring | Real-time analysis |
 
 ### Site Information Columns (merged)
@@ -764,20 +870,18 @@ Data retrieved from USGS NWIS contains the following columns:
 
 ### Understanding Water Level Values
 
-- **`lev_va`** (primary measurement): Depth to water in **feet below land surface**
-  - Lower values = shallower water table (closer to surface)
-  - Higher values = deeper water table (further from surface)
-  - Example: `lev_va = 15.5` means water is 15.5 feet below the ground surface
+The meaning of `value` / `lev_va` depends on `parameter_cd`. Filter to a single
+parameter to keep wells comparable:
 
-### Measurement Method Codes (`lev_meth_cd`)
+- **`72019`** — depth to water in **feet below land surface** (the primary
+  water-table measurement). Lower = shallower water table; higher = deeper.
+  Example: `lev_va = 15.5` means water is 15.5 ft below the ground surface.
+- **`62610` / `62611`** — groundwater-level **elevation** (feet relative to a
+  vertical datum), not a depth.
 
-| Code | Description |
-|------|-------------|
-| `S` | Steel tape |
-| `E` | Electric tape |
-| `T` | Pressure transducer |
-| `V` | Calibrated airline |
-| `R` | Reported (not measured) |
+```python
+depth = data[data['parameter_cd'] == '72019']  # depth-to-water only
+```
 
 ---
 

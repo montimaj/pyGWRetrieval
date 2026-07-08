@@ -3,13 +3,15 @@
 A Python package for retrieving and analyzing USGS groundwater level data.
 
 [![PyPI version](https://img.shields.io/pypi/v/pyGWRetrieval.svg)](https://pypi.org/project/pyGWRetrieval/)
+[![PyPI downloads](https://img.shields.io/pypi/dm/pyGWRetrieval.svg)](https://pypi.org/project/pyGWRetrieval/)
 [![GitHub Pages](https://img.shields.io/badge/docs-GitHub%20Pages-blue?logo=github)](https://montimaj.github.io/pyGWRetrieval/)
-[![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/downloads/)
+[![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Changelog](https://img.shields.io/badge/changelog-v0.2.0-orange.svg)](CHANGELOG.md)
 
 ## Overview
 
-**pyGWRetrieval** simplifies the process of downloading daily groundwater level data from the USGS National Water Information System (NWIS). It supports various spatial inputs including:
+**pyGWRetrieval** simplifies the process of downloading USGS groundwater level data (field measurements, daily values, and instantaneous values) via the modern USGS Water Data API. It supports various spatial inputs including:
 
 - **Zip codes** with customizable buffer distances
 - **GeoJSON files** for custom areas of interest
@@ -25,7 +27,10 @@ A Python package for retrieving and analyzing USGS groundwater level data.
 - 📈 **Visualization**: Built-in plotting for time series analysis
 - 💾 **Multiple Export Formats**: Save data as CSV or Parquet files
 - 🔧 **Trend Analysis**: Calculate linear trends for water level changes
+- 🗺️ **Water-Table Depth Maps**: Interpolate point observations to gridded rasters (IDW, kriging, RBF, linear, nearest) at a resolution you set in meters
+- 💧 **Aquifer Filtering**: Retrieve aquifer type and restrict to unconfined (water-table) wells
 - ⚡ **Parallel Processing**: Dask-powered parallel processing for large datasets
+- 🌐 **Modern USGS API**: Built on the USGS Water Data OGC API with native large-area request chunking
 
 ## USGS Data Sources
 
@@ -42,7 +47,7 @@ pyGWRetrieval supports three USGS NWIS data sources for groundwater levels:
 ```python
 from pyGWRetrieval import GroundwaterRetrieval
 
-# Default: gwlevels only (backward compatible)
+# Default: dv (daily values)
 gw = GroundwaterRetrieval(start_date='2020-01-01')
 data = gw.get_data_by_zipcode('89701', buffer_miles=10)
 
@@ -68,6 +73,15 @@ gw_instant = GroundwaterRetrieval(
 The output data includes a `data_source` column to identify which source each record came from.
 
 > **Note on Data Aggregation**: All three data types (`gwlevels`, `dv`, `iv`) are stored as-is after download without any aggregation or transformation. Daily values (`dv`) are pre-computed by USGS, and instantaneous values (`iv`) retain their original high-frequency resolution (typically 15-60 minute intervals). If you need to aggregate `iv` data to daily or other frequencies, use the `TemporalAggregator` class from the `temporal` module.
+
+> **Data backend**: As of v0.2.0, pyGWRetrieval uses the modern **USGS Water
+> Data OGC API** (`dataretrieval >= 1.2.0`, the `waterdata` module) for all
+> retrieval — `get_monitoring_locations`, `get_daily`, `get_continuous`, and
+> `get_field_measurements`. This restores `gwlevels` field-measurement
+> retrieval (the deprecated NWIS endpoint returned an HTML notice instead of
+> data) and adds native large-area request chunking. The legacy NWIS endpoints
+> are kept only as an automatic fallback. Note that `site_no` now carries the
+> full monitoring-location id (e.g. `USGS-393000119000001`).
 
 ## Installation
 
@@ -195,6 +209,45 @@ data = gw.get_data_by_shapefile('my_basin.shp')
 data = gw.get_data_by_shapefile('well_locations.shp', buffer_miles=5)
 ```
 
+> **Large areas (new in v0.2.0)**: Queries over whole hydrologic regions or
+> large basins work with no extra configuration — the USGS Water Data OGC API
+> chunks large bounding-box requests natively, and results are clipped to the
+> requested geometry. (If the deprecated NWIS fallback is ever used, its
+> 25-square-degree `bBox` limit is handled by automatic sub-box tiling.) See the
+> [examples README](examples/README.md) for an Upper Colorado River Basin example.
+
+#### Example: Monthly water levels for the Upper Colorado River Basin
+
+The [`examples/ucrc/`](examples/ucrc/) directory ships a basin polygon
+(`UCRB_WBDHU2`, WBD HU2 = 14). Its bounding box spans ~53 square degrees, so
+the query is automatically chunked. The snippet below downloads the latest
+5 years of daily values (`dv`, the default source) for the basin and
+aggregates them to **monthly mean water levels**:
+
+```python
+from pyGWRetrieval import GroundwaterRetrieval, TemporalAggregator
+
+# Default source is 'dv' (daily values); the oversized basin bbox is
+# auto-chunked and wells are clipped to the polygon.
+gw = GroundwaterRetrieval(start_date='2021-07-08', end_date='2026-07-08')
+data = gw.get_data_by_shapefile('examples/ucrc/UCRB_WBDHU2/UCRB_WBDHU2.shp')
+
+# Wells report different USGS parameters. Each record's parameter is exposed
+# in the 'parameter_cd' column, so filter to depth-to-water (72019, feet below
+# land surface) to keep every well on the same footing.
+depth = data[data['parameter_cd'] == '72019']
+
+# Monthly mean depth-to-water per well (dv uses the 'datetime' date column).
+aggregator = TemporalAggregator(depth, date_column='datetime', value_column='lev_va')
+monthly = aggregator.to_monthly(agg_func='mean')
+
+monthly.to_csv('ucrb_monthly_gwl.csv', index=False)
+print(f"{len(monthly)} monthly records from {depth['site_no'].nunique()} wells")
+```
+
+A runnable version is provided as
+[`examples/ucrc/retrieve_ucrb.py`](examples/ucrc/retrieve_ucrb.py).
+
 ### Using GeoJSON
 
 ```python
@@ -236,6 +289,84 @@ water_year = aggregator.to_annual(water_year=True)
 # Custom period (e.g., summer months)
 summer = aggregator.to_custom_period(months=[6, 7, 8], period_name='summer')
 ```
+
+### Water-Table Depth Maps (Spatial Interpolation)
+
+Turn point observations into gridded **water-table depth maps** for a chosen
+window (`'all'`, `'monthly'`, `'annual'`, or `'custom'`) at a resolution you
+specify **in meters**. Supported methods: `idw` (inverse distance weighting),
+`kriging` (ordinary), and `linear` / `cubic` / `nearest` / `rbf`. Requires the
+`interp` extra (`pip install pyGWRetrieval[interp]`) for kriging and the
+scipy-based methods; IDW works with the core install.
+
+```python
+from pyGWRetrieval import GroundwaterRetrieval, WaterTableInterpolator
+from pyGWRetrieval.spatial import get_geometry_from_shapefile, merge_geometries
+
+# Field measurements + daily values for a basin, 1985-present.
+gw = GroundwaterRetrieval(start_date='1985-01-01', data_sources=['gwlevels', 'dv'])
+data = gw.get_data_by_shapefile('basin.shp')
+
+# Keep depth-to-water (param 72019) at UNCONFINED wells only — water-table
+# depth is only meaningful for unconfined aquifers. Discovery already attached
+# aqfr_type_cd to gw.wells.
+depth = data[data['parameter_cd'] == '72019']
+unconfined = set(gw.wells.loc[gw.wells['aqfr_type_cd'] == 'U', 'site_no'])
+wtd = depth[depth['site_no'].isin(unconfined)]
+
+# Long-term mean water-table depth on a 1 km grid, clipped to the basin.
+basin = merge_geometries(get_geometry_from_shapefile('basin.shp'))
+interp = WaterTableInterpolator(wtd, value_column='lev_va', date_column='datetime')
+grids = interp.interpolate(period='all', method='idw', grid_size_m=1000, boundary=basin)
+
+result = grids['all']
+result.to_geotiff('wtd_mean_idw.tif')   # also .plot() and .to_xarray()
+```
+
+`interpolate()` returns a dict of window label → `InterpolationResult`, each of
+which supports `.plot()`, `.to_geotiff()`, and `.to_xarray()`.
+
+The Upper Colorado River Basin example builds a long-term mean water-table
+depth map (1985-present) and compares five interpolation methods on the same
+1 km grid. It uses the 496 confirmed unconfined wells as a reference and, rather
+than discarding the unclassified/mixed wells, keeps those whose mean
+depth-to-water is consistent with the unconfined water-table surface (within its
+leave-one-out variability, via `idw_at_points`) — 1,120 wells in total. See the
+[examples README](examples/README.md) for the full walkthrough (data funnel,
+gap-fill, and a threshold-sensitivity comparison).
+
+![Water-table depth interpolation method comparison for the Upper Colorado River Basin](https://raw.githubusercontent.com/montimaj/pyGWRetrieval/main/examples/ucrc/wtd_methods_comparison.png)
+
+The panels highlight the methods' characteristics: **IDW** produces smooth
+"bullseyes" around wells, **Kriging** gives a smooth geostatistical surface,
+**RBF** (thin-plate spline) fits observations tightly but overshoots when
+extrapolating beyond the data, **Linear** only fills the Delaunay convex hull
+of the points (it does not extrapolate, so cells beyond the hull are left
+blank), and **Nearest** yields hard Voronoi cells. Grid resolution is set in
+meters (`grid_size_m`); observations are projected to a metric CRS (auto-UTM by
+default) before interpolation.
+
+To give `linear`/`cubic` full basin coverage, pass `fill_outside='nearest'`
+(or `'idw'`) — cells the primary method leaves empty are backfilled by the
+secondary method:
+
+```python
+interp.interpolate(period='all', method='linear', grid_size_m=1000,
+                   boundary=basin, fill_outside='nearest')
+```
+
+**Sensitivity to the well set.** The example gap-fills unclassified/mixed wells
+by keeping only those consistent with the unconfined water-table surface; how
+inclusive that is depends on an acceptance band (`--consistency-pct`). A tighter
+band (60th percentile, 730 wells) vs a looser one (90th percentile, 1,120 wells)
+mostly changes coverage in data-sparse areas — the regional pattern is stable:
+
+![Gap-fill threshold comparison (60th vs 90th percentile)](https://raw.githubusercontent.com/montimaj/pyGWRetrieval/main/examples/ucrc/wtd_threshold_comparison.png)
+
+> **Tip**: choose a resolution appropriate for your well density and extent. A
+> very fine grid over a large, sparsely-monitored basin (e.g. 30 m over the
+> ~293,000 km² Upper Colorado Region — hundreds of billions of cells) is neither
+> tractable nor statistically meaningful.
 
 ### Visualization
 
@@ -342,7 +473,7 @@ pygwretrieval --help
 ### Retrieve Data
 
 ```bash
-# By zip code with buffer (default: gwlevels only)
+# By zip code with buffer (default: dv / daily values)
 pygwretrieval retrieve --zipcode 89701 --buffer 10 --output data.csv
 
 # Retrieve from all USGS data sources (gwlevels, dv, iv)
@@ -475,18 +606,18 @@ pygwretrieval --version
 
 #### `GroundwaterRetrieval`
 
-Main class for data retrieval from USGS NWIS.
+Main class for data retrieval from the USGS Water Data API.
 
 ```python
-GroundwaterRetrieval(start_date='1900-01-01', end_date=None, data_sources='gwlevels')
+GroundwaterRetrieval(start_date='1900-01-01', end_date=None, data_sources='dv')
 ```
 
 **Parameters:**
 - `start_date` (str): Start date in 'YYYY-MM-DD' format (default: '1900-01-01')
 - `end_date` (str): End date (default: today)
 - `data_sources` (str | List): Data sources to retrieve:
-  - `'gwlevels'` (default): Field measurements
-  - `'dv'`: Daily values
+  - `'dv'` (default): Daily values
+  - `'gwlevels'`: Field measurements
   - `'iv'`: Instantaneous values
   - `'all'`: All sources
   - `['gwlevels', 'dv']`: List of specific sources
@@ -498,9 +629,25 @@ GroundwaterRetrieval(start_date='1900-01-01', end_date=None, data_sources='gwlev
 - `get_data_by_shapefile(filepath, buffer_miles)` - Query using shapefile
 - `get_data_by_state(state_code)` - Query entire state
 - `get_data_by_sites(site_numbers)` - Query specific sites
+- `get_aquifer_info(site_numbers, merge)` - Retrieve aquifer type (`aqfr_type_cd`) and attributes
 - `to_csv(filepath)` - Export to CSV
 - `to_parquet(filepath)` - Export to Parquet
 - `save_data_per_zipcode(output_dir, file_format, prefix)` - Save data per zip code
+
+#### `WaterTableInterpolator`
+
+Interpolate point water levels to gridded water-table depth maps.
+
+```python
+WaterTableInterpolator(data, value_column='lev_va', site_column='site_no',
+                       date_column='datetime', lat_column='dec_lat_va',
+                       lon_column='dec_long_va', crs='EPSG:4326')
+```
+
+**Methods:**
+- `interpolate(period, method, grid_size_m, boundary, ...)` - Returns `{window: InterpolationResult}`. `period` ∈ `{'all','monthly','annual','custom'}`; `method` ∈ `{'idw','kriging','linear','cubic','nearest','rbf'}`; `grid_size_m` sets the cell size in meters.
+
+Each `InterpolationResult` has `.grid`, `.x`, `.y`, `.crs` and methods `.plot()`, `.to_geotiff(path)`, `.to_xarray()`.
 
 #### `TemporalAggregator`
 
@@ -553,7 +700,7 @@ setup_logging(level=logging.DEBUG, log_file='pyGWRetrieval.log')
 
 ## Data Sources
 
-This package retrieves data from the **USGS National Water Information System (NWIS)** using the [dataretrieval-python](https://github.com/DOI-USGS/dataretrieval-python) library.
+This package retrieves USGS groundwater data via the modern **USGS Water Data OGC API** (with the legacy National Water Information System, NWIS, kept as an automatic fallback), using the [dataretrieval-python](https://github.com/DOI-USGS/dataretrieval-python) library (≥ 1.2.0).
 
 ### Available Data Sources
 
@@ -579,18 +726,26 @@ The package retrieves groundwater level data with the following columns:
 
 | Column | Description | Units |
 |--------|-------------|-------|
-| `site_no` | USGS site identification number | - |
-| `lev_dt` | Date of water level measurement | Date (YYYY-MM-DD) |
-| `lev_tm` | Time of measurement | Time (HH:MM) |
-| `lev_va` | Water level value | **Feet below land surface** |
-| `lev_acy_cd` | Water level accuracy code | - |
-| `lev_src_cd` | Source of water level data | - |
-| `lev_meth_cd` | Method of measurement code | - |
-| `lev_status_cd` | Status of the site at time of measurement | - |
+| `site_no` | Monitoring location id (e.g. `USGS-393000119000001`) | - |
+| `datetime` | Date/time of measurement (tz-naive) | datetime |
+| `lev_dt` | Alias of `datetime` | datetime |
+| `value` | Standardized water level value | Depends on `parameter_cd` |
+| `lev_va` | Alias of `value` | Depends on `parameter_cd` |
+| `parameter_cd` | USGS parameter code the value came from (e.g. `72019` depth-to-water, `62611` elevation) | - |
+| `data_source` | Origin of the record (`gwlevels`, `dv`, or `iv`) | - |
+| `unit_of_measure` | Unit reported by USGS (e.g. `ft`) | - |
+| `approval_status` | Approval status of the value | - |
+| `qualifier` | Data qualifier code(s) | - |
 | `station_nm` | Station name (merged from site info) | - |
 | `dec_lat_va` | Decimal latitude | Degrees |
 | `dec_long_va` | Decimal longitude | Degrees |
 | `source_zipcode` | Source zip code (for CSV queries) | - |
+
+> The Water Data OGC API returns depth-to-water (parameter `72019`) as **feet
+> below land surface**; elevation parameters (`62610`/`62611`) are in feet
+> relative to a vertical datum. Filter on `parameter_cd` to keep a single
+> quantity. Additional monitoring-location attributes (e.g. `aqfr_type_cd`,
+> `alt_va`) are attached to the wells GeoDataFrame.
 
 ### USGS Parameter Codes
 
@@ -605,8 +760,8 @@ The package retrieves groundwater level data with the following columns:
 
 ## Requirements
 
-- Python ≥ 3.8
-- dataretrieval ≥ 1.0.0
+- Python ≥ 3.10
+- dataretrieval ≥ 1.2.0 (modern USGS Water Data OGC API)
 - pandas ≥ 1.3.0
 - geopandas ≥ 0.10.0
 - shapely ≥ 1.8.0
@@ -620,7 +775,11 @@ The package retrieves groundwater level data with the following columns:
 - seaborn (enhanced visualizations)
 - contextily (basemaps for spatial plots)
 - pyarrow (Parquet support)
-- scipy (trend analysis)
+- scipy (trend analysis; linear/cubic/nearest/rbf interpolation)
+- pykrige (ordinary kriging interpolation)
+- rasterio, xarray (GeoTIFF / xarray export of interpolated grids)
+
+Install the interpolation stack with `pip install pyGWRetrieval[interp]`.
 
 ### Storage Requirements
 
@@ -645,12 +804,16 @@ Storage requirements vary based on the number of zip codes, buffer distance, and
 
 ## Examples
 
-The `examples/` directory contains several example scripts:
+The [`examples/`](examples/README.md) directory contains several example
+scripts — see the [examples README](examples/README.md) for the full index and
+a detailed Upper Colorado River Basin water-table-depth mapping walkthrough:
 
 - **`basic_usage.py`** - Basic data retrieval and visualization
 - **`temporal_analysis.py`** - Temporal aggregation and trend analysis
 - **`advanced_spatial.py`** - Advanced spatial queries
+- **`multi_source_example.py`** - Retrieving from multiple USGS sources
 - **`full_workflow_csv_zipcodes.py`** - Complete end-to-end workflow
+- **`ucrc/`** - Upper Colorado River Basin water-table depth mapping
 
 ### Full Workflow Example
 
@@ -697,6 +860,8 @@ This workflow:
 ## Case Study: Regional Groundwater Analysis of 9 U.S. Metropolitan Areas
 
 The `full_workflow_csv_zipcodes.py` example demonstrates a comprehensive regional groundwater analysis across nine major U.S. Metropolitan Statistical Areas (MSAs): New York, Miami, Washington DC, Houston, Boston, Philadelphia, San Francisco, Chicago, and Dallas.
+
+> **Note**: this case study was produced with pyGWRetrieval [v0.1.0](https://github.com/montimaj/pyGWRetrieval/releases/tag/v0.1.0). Results are substantially unchanged on the v0.2.0 Water Data OGC API backend.
 
 ### Study Overview
 

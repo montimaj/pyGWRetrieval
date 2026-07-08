@@ -24,7 +24,7 @@ Author: Sayantan Majumdar
 License: MIT
 """
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 __author__ = "Sayantan Majumdar"
 
 from .retrieval import GroundwaterRetrieval
@@ -36,6 +36,7 @@ from .spatial import (
     get_bounding_box,
 )
 from .temporal import TemporalAggregator
+from .interpolation import WaterTableInterpolator, InterpolationResult, idw_at_points
 from .visualization import GroundwaterPlotter, plot_wells_map, create_comparison_map
 from .utils import (
     save_to_csv,
@@ -55,6 +56,9 @@ from .parallel import (
 __all__ = [
     "GroundwaterRetrieval",
     "TemporalAggregator",
+    "WaterTableInterpolator",
+    "InterpolationResult",
+    "idw_at_points",
     "GroundwaterPlotter",
     "plot_wells_map",
     "create_comparison_map",

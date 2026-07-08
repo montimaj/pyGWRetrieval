@@ -400,12 +400,14 @@ class TestEdgeCases:
     """Tests for edge cases and error handling."""
     
     def test_empty_dataframe(self):
-        """Test handling of empty DataFrame."""
+        """An empty DataFrame aggregates to an empty result, not an error."""
         empty_df = pd.DataFrame(columns=['site_no', 'lev_dt', 'lev_va'])
-        
-        with pytest.raises(Exception):
-            # Should raise an error with empty data
-            aggregator = TemporalAggregator(empty_df)
+
+        # Construction succeeds as long as the required columns are present...
+        aggregator = TemporalAggregator(empty_df)
+        # ...and aggregation returns an empty DataFrame rather than raising.
+        monthly = aggregator.to_monthly()
+        assert monthly.empty
     
     def test_single_record(self):
         """Test handling of single record."""
@@ -427,6 +429,240 @@ class TestEdgeCases:
         # Zero buffer should still work (returns very small polygon)
         buffered = buffer_geometry(point, buffer_miles=0.001)
         assert buffered is not None
+
+
+class TestBBoxTiling:
+    """Tests for automatic chunking of oversized bounding boxes."""
+
+    def _retriever(self):
+        from pyGWRetrieval import GroundwaterRetrieval
+        return GroundwaterRetrieval()
+
+    def test_small_bbox_not_tiled(self):
+        """A box within the NWIS limit is returned unchanged as one tile."""
+        gw = self._retriever()
+        box = (-120.0, 39.0, -119.0, 40.0)  # 1 sq-deg
+        tiles = gw._tile_bbox(*box)
+        assert len(tiles) == 1
+        assert tiles[0] == box
+
+    def test_large_bbox_is_tiled(self):
+        """An oversized box is split into multiple sub-boxes."""
+        gw = self._retriever()
+        tiles = gw._tile_bbox(-112.3286, 35.5584, -105.6264, 43.4522)  # ~53 sq-deg
+        assert len(tiles) > 1
+
+    def test_all_tiles_under_limit(self):
+        """Every produced tile stays under the NWIS area limit."""
+        gw = self._retriever()
+        tiles = gw._tile_bbox(-112.3286, 35.5584, -105.6264, 43.4522)
+        for min_lon, min_lat, max_lon, max_lat in tiles:
+            area = (max_lon - min_lon) * (max_lat - min_lat)
+            assert area <= gw.MAX_BBOX_SQ_DEGREES + 1e-9
+
+    def test_tiles_cover_original_bbox(self):
+        """The union of tiles exactly spans the original box extent."""
+        gw = self._retriever()
+        box = (-112.3286, 35.5584, -105.6264, 43.4522)
+        tiles = gw._tile_bbox(*box)
+        assert min(t[0] for t in tiles) == pytest.approx(box[0])
+        assert min(t[1] for t in tiles) == pytest.approx(box[1])
+        assert max(t[2] for t in tiles) == pytest.approx(box[2])
+        assert max(t[3] for t in tiles) == pytest.approx(box[3])
+
+    def test_oversized_bbox_queries_each_tile_and_dedupes(self):
+        """Legacy NWIS fallback tiles the bbox and de-duplicates wells."""
+        from unittest.mock import patch
+
+        gw = self._retriever()
+
+        def fake_single(min_lon, min_lat, max_lon, max_lat):
+            # Every tile reports a shared well plus a tile-unique one.
+            df = pd.DataFrame({
+                'site_no': ['shared', f'{min_lon:.2f}_{min_lat:.2f}'],
+                'dec_long_va': [min_lon, min_lon],
+                'dec_lat_va': [min_lat, min_lat],
+            })
+            return gpd.GeoDataFrame(
+                df,
+                geometry=[Point(min_lon, min_lat), Point(min_lon, min_lat)],
+                crs='EPSG:4326',
+            )
+
+        # The tiling path is now the legacy NWIS fallback (the default path uses
+        # the modern OGC API, which chunks natively).
+        with patch.object(gw, '_get_wells_by_single_bbox', side_effect=fake_single) as m:
+            wells = gw._get_wells_by_bbox_nwis(-112.3286, 35.5584, -105.6264, 43.4522)
+
+        assert m.call_count > 1  # tiled into multiple queries
+        # 'shared' appears once despite being returned by every tile
+        assert (wells['site_no'] == 'shared').sum() == 1
+
+
+class TestInterpolation:
+    """Tests for the water-table depth interpolator."""
+
+    def _sample_wtd(self):
+        # A handful of wells spread across a small area, one record each.
+        rng = [(39.2, -108.9, 10.0), (39.6, -108.5, 20.0), (39.4, -108.7, 15.0),
+               (39.8, -108.3, 25.0), (39.1, -108.2, 12.0), (39.7, -108.8, 18.0)]
+        rows = []
+        for i, (lat, lon, val) in enumerate(rng):
+            rows.append({'site_no': f'USGS-{i}', 'datetime': datetime(2020, 1, 1),
+                         'lev_va': val, 'dec_lat_va': lat, 'dec_long_va': lon})
+        return pd.DataFrame(rows)
+
+    def test_idw_grid_shape_and_range(self):
+        from pyGWRetrieval import WaterTableInterpolator
+        interp = WaterTableInterpolator(self._sample_wtd())
+        res = interp.interpolate(period='all', method='idw', grid_size_m=5000)['all']
+        assert res.grid.ndim == 2
+        assert res.grid.shape == (res.y.size, res.x.size)
+        finite = res.grid[np.isfinite(res.grid)]
+        # IDW is bounded by the observed value range.
+        assert finite.min() >= 10.0 - 1e-6
+        assert finite.max() <= 25.0 + 1e-6
+        assert res.crs.startswith('EPSG:')
+
+    def test_grid_resolution_in_meters(self):
+        from pyGWRetrieval import WaterTableInterpolator
+        interp = WaterTableInterpolator(self._sample_wtd())
+        res = interp.interpolate(period='all', method='idw', grid_size_m=2000)['all']
+        # Cell spacing along x should equal the requested size (meters).
+        assert abs((res.x[1] - res.x[0]) - 2000) < 1e-6
+
+    def test_period_all_single_window(self):
+        from pyGWRetrieval import WaterTableInterpolator
+        interp = WaterTableInterpolator(self._sample_wtd())
+        grids = interp.interpolate(period='all', method='idw', grid_size_m=5000)
+        assert list(grids.keys()) == ['all']
+
+    def test_invalid_method_raises(self):
+        from pyGWRetrieval import WaterTableInterpolator
+        interp = WaterTableInterpolator(self._sample_wtd())
+        with pytest.raises(ValueError):
+            interp.interpolate(method='bogus')
+
+    def test_nearest_via_scipy(self):
+        pytest.importorskip('scipy')
+        from pyGWRetrieval import WaterTableInterpolator
+        interp = WaterTableInterpolator(self._sample_wtd())
+        res = interp.interpolate(period='all', method='nearest', grid_size_m=5000)['all']
+        finite = res.grid[np.isfinite(res.grid)]
+        # Nearest-neighbor only ever returns observed values.
+        assert set(np.round(finite, 6)).issubset({10.0, 12.0, 15.0, 18.0, 20.0, 25.0})
+
+    def test_fill_outside_backfills_linear_hull(self):
+        pytest.importorskip('scipy')
+        from pyGWRetrieval import WaterTableInterpolator
+        interp = WaterTableInterpolator(self._sample_wtd())
+        plain = interp.interpolate(period='all', method='linear', grid_size_m=3000,
+                                   clip_to_boundary=False)['all']
+        filled = interp.interpolate(period='all', method='linear', grid_size_m=3000,
+                                    fill_outside='nearest', clip_to_boundary=False)['all']
+        # Linear alone leaves out-of-hull NaNs; backfilling removes them.
+        assert np.isnan(plain.grid).any()
+        assert not np.isnan(filled.grid).any()
+
+    def test_idw_at_points(self):
+        pytest.importorskip('scipy')
+        from pyGWRetrieval import idw_at_points
+        src = np.array([[0.0, 0.0], [100.0, 0.0]])
+        val = np.array([10.0, 20.0])
+        # Exact hit returns the observed value; midpoint is the equal-weight mean.
+        out = idw_at_points(src, val, np.array([[0.0, 0.0], [50.0, 0.0], [100.0, 0.0]]),
+                            n_neighbors=2)
+        assert out[0] == 10.0 and out[2] == 20.0
+        assert abs(out[1] - 15.0) < 1e-9
+
+    def test_idw_at_points_leave_one_out(self):
+        pytest.importorskip('scipy')
+        from pyGWRetrieval import idw_at_points
+        xy = np.array([[0.0, 0.0], [10.0, 0.0], [20.0, 0.0], [30.0, 0.0]])
+        val = np.array([1.0, 2.0, 3.0, 4.0])
+        # Each point predicted from the others (never returns its own value here).
+        loo = idw_at_points(xy, val, xy, n_neighbors=3, leave_one_out=True)
+        assert loo.shape == (4,)
+        assert np.isfinite(loo).all()
+
+
+class TestWaterdataStandardization:
+    """Tests for mapping the Water Data OGC long-format frame to package schema."""
+
+    def test_standardize_maps_columns(self):
+        from pyGWRetrieval import GroundwaterRetrieval
+        raw = pd.DataFrame({
+            'monitoring_location_id': ['USGS-123', 'USGS-456'],
+            'parameter_code': ['72019', '62611'],
+            'time': pd.to_datetime(['2020-01-01', '2020-01-02'], utc=True),
+            'value': ['12.5', '3000.0'],
+        })
+        out = GroundwaterRetrieval._standardize_waterdata(raw)
+        assert list(out['site_no']) == ['USGS-123', 'USGS-456']
+        assert list(out['parameter_cd']) == ['72019', '62611']
+        assert list(out['lev_va']) == [12.5, 3000.0]
+        assert list(out['value']) == [12.5, 3000.0]
+        assert out['datetime'].dt.tz is None  # tz-naive
+        assert 'lev_dt' in out.columns
+
+    def test_standardize_empty(self):
+        from pyGWRetrieval import GroundwaterRetrieval
+        assert GroundwaterRetrieval._standardize_waterdata(pd.DataFrame()).empty
+        assert GroundwaterRetrieval._standardize_waterdata(None).empty
+
+
+class TestValueCoalescing:
+    """Tests for parameter-aware value/lev_va coalescing of dv/iv frames (legacy)."""
+
+    def _retriever(self):
+        from pyGWRetrieval import GroundwaterRetrieval
+        return GroundwaterRetrieval()
+
+    def test_dv_prefers_depth_to_water_and_records_param(self):
+        """dv coalesce prefers 72019 (depth) and records parameter_cd."""
+        gw = self._retriever()
+        df = pd.DataFrame({
+            '72019_Mean': [374.5, None, 10.0],
+            '72019_Mean_cd': ['A', 'A', 'A'],
+            '62611_Maximum': [None, 8800.0, 9999.0],
+            '62611_Maximum_cd': [None, 'A', 'A'],
+        })
+        out = gw._coalesce_value_columns(df.copy(), source='dv')
+        # Row 2 has only 62611; rows 0 and 2 prefer 72019 even when both present.
+        assert list(out['parameter_cd']) == ['72019', '62611', '72019']
+        assert list(out['value']) == [374.5, 8800.0, 10.0]
+        assert list(out['lev_va']) == [374.5, 8800.0, 10.0]
+
+    def test_dv_prefers_mean_statistic(self):
+        """When a parameter has several statistics, the mean is chosen."""
+        gw = self._retriever()
+        df = pd.DataFrame({
+            '72019_Minimum': [1.0],
+            '72019_Mean': [2.0],
+            '72019_Maximum': [3.0],
+        })
+        out = gw._coalesce_value_columns(df.copy(), source='dv')
+        assert out['value'].iloc[0] == 2.0
+        assert out['parameter_cd'].iloc[0] == '72019'
+
+    def test_iv_bare_parameter_columns(self):
+        """iv frames use bare parameter-code columns; _cd columns are ignored."""
+        gw = self._retriever()
+        df = pd.DataFrame({
+            '72019': [5.0, None],
+            '72019_cd': ['A', 'A'],
+            '62611': [None, 9000.0],
+        })
+        out = gw._coalesce_value_columns(df.copy(), source='iv')
+        assert list(out['parameter_cd']) == ['72019', '62611']
+        assert list(out['value']) == [5.0, 9000.0]
+
+    def test_no_parameter_columns_is_noop(self):
+        """A frame without any parameter columns is returned unchanged."""
+        gw = self._retriever()
+        df = pd.DataFrame({'site_no': ['x'], 'datetime': [pd.Timestamp('2020-01-01')]})
+        out = gw._coalesce_value_columns(df.copy(), source='dv')
+        assert 'value' not in out.columns
 
 
 if __name__ == '__main__':

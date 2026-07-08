@@ -75,7 +75,7 @@ pygwretrieval retrieve [options]
 
 | Option | Description |
 |--------|-------------|
-| `--data-sources SOURCE [SOURCE ...]` | USGS data sources to retrieve (default: gwlevels) |
+| `--data-sources SOURCE [SOURCE ...]` | USGS data sources to retrieve (default: dv) |
 
 **Available Sources:**
 - `gwlevels` - Field groundwater-level measurements (discrete, most accurate)
@@ -110,7 +110,7 @@ pygwretrieval retrieve [options]
 ### Examples
 
 ```bash
-# Single zip code with 10-mile buffer (default: gwlevels only)
+# Single zip code with 10-mile buffer (default: dv / daily values)
 pygwretrieval retrieve --zipcode 89701 --buffer 10 --output data.csv
 
 # Retrieve from ALL data sources

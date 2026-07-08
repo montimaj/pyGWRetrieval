@@ -4,7 +4,7 @@ This guide will help you get started with pyGWRetrieval quickly.
 
 ## Basic Concepts
 
-pyGWRetrieval retrieves groundwater level data from the USGS National Water Information System (NWIS). The package supports various ways to specify your area of interest:
+pyGWRetrieval retrieves USGS groundwater level data via the modern USGS Water Data OGC API (serving National Water Information System data). The package supports various ways to specify your area of interest:
 
 1. **Zip Code** - Specify a US zip code with a buffer distance
 2. **GeoJSON** - Use a GeoJSON file with polygons or points
@@ -22,7 +22,7 @@ The package can retrieve data from three USGS data sources:
 | `dv` | Daily values (daily summaries from sensors) | Regular monitoring |
 | `iv` | Instantaneous values (15-60 min sensor data) | Real-time analysis |
 
-By default, only `gwlevels` is retrieved for backward compatibility.
+By default, only `dv` (daily values) is retrieved. Pass `data_sources='gwlevels'`, `'iv'`, `'all'`, or a list to change this.
 
 ## Your First Query
 

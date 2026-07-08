@@ -4,7 +4,7 @@ This guide covers different ways to install pyGWRetrieval.
 
 ## Requirements
 
-- Python 3.8 or higher
+- Python 3.10 or higher
 - pip package manager
 
 ## Quick Installation
@@ -45,6 +45,21 @@ pip install pyGWRetrieval[viz]
 This includes:
 - `seaborn` - Statistical data visualization
 - `contextily` - Basemaps for spatial plots
+
+### Interpolation Dependencies
+
+For gridded water-table depth interpolation (kriging and the scipy-based
+methods) and raster export:
+
+```bash
+pip install pyGWRetrieval[interp]
+```
+
+This includes:
+- `scipy` - Linear/cubic/nearest/RBF interpolation and trend analysis
+- `pykrige` - Ordinary kriging
+- `rasterio` - GeoTIFF export
+- `xarray` - `xarray.DataArray` export
 
 ### Development Dependencies
 

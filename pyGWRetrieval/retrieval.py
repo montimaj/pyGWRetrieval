@@ -41,7 +41,8 @@ from typing import Optional, Union, List, Tuple, Dict, Literal
 
 import pandas as pd
 import geopandas as gpd
-import dataretrieval.nwis as nwis
+import dataretrieval.nwis as nwis  # legacy fallback (deprecated USGS endpoints)
+from dataretrieval import waterdata  # modern USGS Water Data OGC API (default)
 from shapely.geometry import Point, Polygon, MultiPolygon
 
 # Suppress warnings from dataretrieval/pandas about mixed types and incomplete dates
@@ -68,6 +69,27 @@ from .parallel import (
 )
 
 logger = logging.getLogger(__name__)
+
+# The Water Data OGC API's `state_name` filter expects the full state name,
+# whereas ``get_data_by_state`` accepts a two-letter USPS code.
+_US_STATE_NAMES = {
+    'AL': 'Alabama', 'AK': 'Alaska', 'AZ': 'Arizona', 'AR': 'Arkansas',
+    'CA': 'California', 'CO': 'Colorado', 'CT': 'Connecticut', 'DE': 'Delaware',
+    'DC': 'District of Columbia', 'FL': 'Florida', 'GA': 'Georgia',
+    'HI': 'Hawaii', 'ID': 'Idaho', 'IL': 'Illinois', 'IN': 'Indiana',
+    'IA': 'Iowa', 'KS': 'Kansas', 'KY': 'Kentucky', 'LA': 'Louisiana',
+    'ME': 'Maine', 'MD': 'Maryland', 'MA': 'Massachusetts', 'MI': 'Michigan',
+    'MN': 'Minnesota', 'MS': 'Mississippi', 'MO': 'Missouri', 'MT': 'Montana',
+    'NE': 'Nebraska', 'NV': 'Nevada', 'NH': 'New Hampshire', 'NJ': 'New Jersey',
+    'NM': 'New Mexico', 'NY': 'New York', 'NC': 'North Carolina',
+    'ND': 'North Dakota', 'OH': 'Ohio', 'OK': 'Oklahoma', 'OR': 'Oregon',
+    'PA': 'Pennsylvania', 'RI': 'Rhode Island', 'SC': 'South Carolina',
+    'SD': 'South Dakota', 'TN': 'Tennessee', 'TX': 'Texas', 'UT': 'Utah',
+    'VT': 'Vermont', 'VA': 'Virginia', 'WA': 'Washington',
+    'WV': 'West Virginia', 'WI': 'Wisconsin', 'WY': 'Wyoming',
+    'PR': 'Puerto Rico', 'VI': 'Virgin Islands', 'GU': 'Guam',
+    'AS': 'American Samoa', 'MP': 'Northern Mariana Islands',
+}
 
 # Type alias for data sources
 DataSourceType = Literal['all', 'gwlevels', 'dv', 'iv']
@@ -110,10 +132,10 @@ class GroundwaterRetrieval:
         Default is today's date.
     data_sources : str or list, optional
         Data source(s) to retrieve. Options:
-        - 'all': Retrieve from all sources (default)
+        - 'dv': Daily values only (default)
         - 'gwlevels': Field groundwater-level measurements only
-        - 'dv': Daily values only
         - 'iv': Instantaneous values only
+        - 'all': Retrieve from all sources
         - List of sources: e.g., ['gwlevels', 'dv']
 
     Attributes
@@ -131,36 +153,62 @@ class GroundwaterRetrieval:
 
     Examples
     --------
-    >>> # Get all data sources (default)
+    >>> # Get daily values (default)
     >>> gw = GroundwaterRetrieval(start_date='2020-01-01')
     >>> data = gw.get_data_by_zipcode('89701', buffer_miles=10)
-    
+
     >>> # Get only field measurements
     >>> gw = GroundwaterRetrieval(data_sources='gwlevels')
     >>> data = gw.get_data_by_zipcode('89701', buffer_miles=10)
-    
-    >>> # Get daily values and instantaneous values
-    >>> gw = GroundwaterRetrieval(data_sources=['dv', 'iv'])
+
+    >>> # Get all sources
+    >>> gw = GroundwaterRetrieval(data_sources='all')
     >>> data = gw.get_data_by_zipcode('89701', buffer_miles=10)
     """
 
-    # USGS parameter codes for groundwater level
+    # USGS parameter codes for groundwater level, in preference order. 72019
+    # (depth to water below land surface) is primary; the value/lev_va columns
+    # are coalesced across these codes in this order so a single, consistent
+    # measurement is exposed per record.
     GW_LEVEL_PARAM = '72019'  # Depth to water level, feet below land surface
     GW_LEVEL_PARAMS = ['72019', '72020', '62610', '62611']  # Various GW level codes
-    
+
+    # For daily values (dv), USGS reports several statistics per parameter
+    # (e.g. 72019_Mean, 72019_Minimum). Prefer the mean when choosing a value.
+    DV_STAT_PREFERENCE = ['Mean', 'Median', 'Minimum', 'Maximum']
+
     # Site type for groundwater wells
     SITE_TYPE = 'GW'
-    
+
     # Valid data sources
     VALID_SOURCES = ['gwlevels', 'dv', 'iv']
+
+    # NWIS limits a `bBox` site query to a decimal-degree area (lon-range *
+    # lat-range) of 25 square degrees. We tile oversized boxes to stay just
+    # under this limit.
+    MAX_BBOX_SQ_DEGREES = 25.0
 
     def __init__(
         self,
         start_date: str = '1900-01-01',
         end_date: Optional[str] = None,
-        data_sources: Union[str, List[str]] = 'all'
+        data_sources: Union[str, List[str]] = 'dv'
     ):
-        """Initialize the GroundwaterRetrieval instance."""
+        """
+        Initialize the GroundwaterRetrieval instance.
+
+        Parameters
+        ----------
+        start_date : str, optional
+            Start date in 'YYYY-MM-DD' format. Default is '1900-01-01'.
+        end_date : str, optional
+            End date in 'YYYY-MM-DD' format. Default is today.
+        data_sources : str or list of str, optional
+            USGS NWIS source(s) to retrieve. Default is ``'dv'`` (daily
+            values). Options: ``'gwlevels'`` (field measurements), ``'dv'``
+            (daily values), ``'iv'`` (instantaneous values), ``'all'`` (all
+            three), or a list such as ``['gwlevels', 'dv']``.
+        """
         self.start_date = start_date
         self.end_date = end_date or datetime.now().strftime('%Y-%m-%d')
         
@@ -571,14 +619,148 @@ class GroundwaterRetrieval:
         >>> data = gw.get_data_by_sites(['390000119000001', '390000119000002'])
         """
         logger.info(f"Retrieving data for {len(site_numbers)} sites")
-        
+
         # Get site info
         self.wells = self._get_site_info(site_numbers)
-        
+
         # Get data
         self.data = self._get_data_for_wells(site_numbers)
-        
+
         return self.data
+
+    def get_aquifer_info(
+        self,
+        site_numbers: Optional[List[str]] = None,
+        batch_size: int = 100,
+        merge: bool = True
+    ) -> pd.DataFrame:
+        """
+        Retrieve aquifer attributes (confined/unconfined, etc.) for wells.
+
+        Water-table depth is only physically meaningful for **unconfined**
+        (water-table) aquifers; confined wells measure potentiometric head. Use
+        this to obtain each well's ``aqfr_type_cd`` and filter accordingly, e.g.
+        ``info[info['aqfr_type_cd'] == 'U']``.
+
+        Parameters
+        ----------
+        site_numbers : list of str, optional
+            Sites to look up. Defaults to the sites in ``self.wells``.
+        batch_size : int, optional
+            Number of sites per NWIS ``get_info`` request. Default 100.
+        merge : bool, optional
+            If True, merge the aquifer columns into ``self.wells``. Default True.
+
+        Returns
+        -------
+        pd.DataFrame
+            Columns: ``site_no`` and any available of ``aqfr_type_cd``,
+            ``aqfr_cd``, ``nat_aqfr_cd``, ``well_depth_va``.
+
+        Notes
+        -----
+        ``aqfr_type_cd`` values: ``'U'`` unconfined (water-table), ``'C'``
+        confined (artesian), ``'M'`` mixed, ``'N'`` unknown/other; may be blank
+        when USGS has not classified the site.
+        """
+        if site_numbers is None:
+            if self.wells is None or self.wells.empty:
+                raise ValueError(
+                    "No wells available; pass site_numbers or run a query first."
+                )
+            site_numbers = self.wells['site_no'].astype(str).tolist()
+
+        site_numbers = [str(s) for s in site_numbers]
+
+        # Prefer the modern OGC monitoring-locations service, which carries the
+        # aquifer attributes natively. Fall back to legacy NWIS get_info.
+        info = self._fetch_aquifer_info_waterdata(site_numbers, batch_size)
+        if info.empty:
+            info = self._fetch_aquifer_info_nwis(site_numbers, batch_size)
+
+        if info.empty:
+            logger.warning("No aquifer info retrieved.")
+            return pd.DataFrame()
+
+        keep = [
+            c for c in ['site_no', 'aqfr_type_cd', 'aqfr_cd',
+                        'nat_aqfr_cd', 'well_depth_va']
+            if c in info.columns
+        ]
+        info = info[keep].copy()
+        info['site_no'] = info['site_no'].astype(str)
+        info = info.drop_duplicates(subset='site_no')
+
+        logger.info(
+            f"Retrieved aquifer info for {len(info)} wells "
+            f"({info['aqfr_type_cd'].eq('U').sum()} unconfined)"
+            if 'aqfr_type_cd' in info.columns else
+            f"Retrieved aquifer info for {len(info)} wells"
+        )
+
+        if merge and self.wells is not None and not self.wells.empty:
+            self.wells['site_no'] = self.wells['site_no'].astype(str)
+            add_cols = [c for c in keep
+                        if c != 'site_no' and c not in self.wells.columns]
+            if add_cols:
+                self.wells = self.wells.merge(
+                    info[['site_no'] + add_cols], on='site_no', how='left'
+                )
+
+        return info
+
+    def _fetch_aquifer_info_waterdata(
+        self, site_numbers: List[str], batch_size: int
+    ) -> pd.DataFrame:
+        """Fetch aquifer attributes via the OGC monitoring-locations service."""
+        rename = {
+            'monitoring_location_id': 'site_no',
+            'aquifer_type_code': 'aqfr_type_cd',
+            'aquifer_code': 'aqfr_cd',
+            'national_aquifer_code': 'nat_aqfr_cd',
+            'well_constructed_depth': 'well_depth_va',
+        }
+        frames = []
+        for i in range(0, len(site_numbers), batch_size):
+            batch = site_numbers[i:i + batch_size]
+            try:
+                locs, _ = waterdata.get_monitoring_locations(
+                    monitoring_location_id=batch, skip_geometry=True
+                )
+                if locs is not None and len(locs):
+                    df = pd.DataFrame(locs)
+                    cols = {s: d for s, d in rename.items() if s in df.columns}
+                    frames.append(df[list(cols)].rename(columns=cols))
+            except Exception as e:
+                logger.warning(f"waterdata aquifer-info batch failed: {e}")
+                continue
+        return (pd.concat(frames, ignore_index=True)
+                if frames else pd.DataFrame())
+
+    @staticmethod
+    def _bare_site_numbers(site_numbers: List[str]) -> List[str]:
+        """Strip the agency prefix (e.g. ``USGS-``) that the OGC ids carry, so
+        legacy NWIS endpoints (which expect bare site numbers) accept them."""
+        return [str(s).split('-', 1)[-1] if str(s).startswith('USGS-') else str(s)
+                for s in site_numbers]
+
+    def _fetch_aquifer_info_nwis(
+        self, site_numbers: List[str], batch_size: int
+    ) -> pd.DataFrame:
+        """Legacy NWIS aquifer-info fetch (fallback)."""
+        site_numbers = self._bare_site_numbers(site_numbers)
+        frames = []
+        for i in range(0, len(site_numbers), batch_size):
+            batch = site_numbers[i:i + batch_size]
+            try:
+                info, _ = nwis.get_info(sites=batch)
+                if not info.empty:
+                    frames.append(info)
+            except Exception as e:
+                logger.warning(f"NWIS aquifer-info batch failed: {e}")
+                continue
+        return (pd.concat(frames, ignore_index=True)
+                if frames else pd.DataFrame())
 
     def _process_geodataframe(
         self,
@@ -656,6 +838,21 @@ class GroundwaterRetrieval:
         
         return self.data
 
+    # Columns copied from a monitoring-locations response into the wells frame,
+    # mapped to the package's legacy (nwis) schema names.
+    _ML_COLUMN_MAP = {
+        'monitoring_location_name': 'station_nm',
+        'agency_code': 'agency_cd',
+        'site_type_code': 'site_tp_cd',
+        'altitude': 'alt_va',
+        'altitude_datum': 'alt_datum_cd',
+        'aquifer_code': 'aqfr_cd',
+        'national_aquifer_code': 'nat_aqfr_cd',
+        'aquifer_type_code': 'aqfr_type_cd',
+        'well_constructed_depth': 'well_depth_va',
+        'hydrologic_unit_code': 'huc_cd',
+    }
+
     def _get_wells_by_bbox(
         self,
         min_lon: float,
@@ -663,32 +860,188 @@ class GroundwaterRetrieval:
         max_lon: float,
         max_lat: float
     ) -> gpd.GeoDataFrame:
-        """Get groundwater wells within a bounding box."""
+        """
+        Get groundwater wells within a bounding box.
+
+        Uses the modern USGS Water Data OGC API
+        (``waterdata.get_monitoring_locations``), which supports arbitrarily
+        large bounding boxes with native request chunking. Falls back to the
+        deprecated NWIS ``what_sites`` endpoint (with manual sub-box tiling to
+        stay under its 25 square-degree limit) if the modern API is unavailable.
+        """
+        try:
+            wells = self._get_wells_by_bbox_waterdata(
+                min_lon, min_lat, max_lon, max_lat
+            )
+            return wells
+        except Exception as e:
+            logger.warning(
+                f"waterdata monitoring-locations query failed ({e}); "
+                f"falling back to legacy NWIS what_sites."
+            )
+            return self._get_wells_by_bbox_nwis(
+                min_lon, min_lat, max_lon, max_lat
+            )
+
+    def _get_wells_by_bbox_waterdata(
+        self,
+        min_lon: float,
+        min_lat: float,
+        max_lon: float,
+        max_lat: float
+    ) -> gpd.GeoDataFrame:
+        """Query the Water Data OGC API for GW monitoring locations in a bbox."""
+        bbox = [round(min_lon, 4), round(min_lat, 4),
+                round(max_lon, 4), round(max_lat, 4)]
+        locs, _ = waterdata.get_monitoring_locations(
+            bbox=bbox, site_type_code=self.SITE_TYPE
+        )
+        return self._wells_from_monitoring_locations(locs)
+
+    def _wells_from_monitoring_locations(
+        self, locs: gpd.GeoDataFrame
+    ) -> gpd.GeoDataFrame:
+        """Map a monitoring-locations response to the wells schema."""
+        if locs is None or len(locs) == 0:
+            return gpd.GeoDataFrame()
+
+        locs = locs.copy()
+        if locs.crs is None:
+            locs = locs.set_crs(epsg=4326)
+        else:
+            locs = locs.to_crs(epsg=4326)
+        # Drop locations without a usable point geometry.
+        locs = locs[locs.geometry.notna() & ~locs.geometry.is_empty]
+        if locs.empty:
+            return gpd.GeoDataFrame()
+
+        locs['site_no'] = locs['monitoring_location_id'].astype(str)
+        locs['dec_long_va'] = locs.geometry.x
+        locs['dec_lat_va'] = locs.geometry.y
+        for src, dst in self._ML_COLUMN_MAP.items():
+            if src in locs.columns:
+                locs[dst] = locs[src]
+
+        return gpd.GeoDataFrame(locs, geometry='geometry', crs='EPSG:4326')
+
+    def _get_wells_by_bbox_nwis(
+        self,
+        min_lon: float,
+        min_lat: float,
+        max_lon: float,
+        max_lat: float
+    ) -> gpd.GeoDataFrame:
+        """
+        Legacy NWIS well discovery. NWIS restricts a single ``bBox`` site query
+        to 25 square degrees, so oversized boxes are split into a grid of
+        sub-boxes, queried independently, and the de-duplicated union returned.
+        """
+        tiles = self._tile_bbox(min_lon, min_lat, max_lon, max_lat)
+
+        if len(tiles) > 1:
+            logger.info(
+                f"Bounding box area exceeds the NWIS "
+                f"{self.MAX_BBOX_SQ_DEGREES:g} sq-degree limit; splitting into "
+                f"{len(tiles)} sub-boxes"
+            )
+
+        frames = []
+        for tile in tiles:
+            wells = self._get_wells_by_single_bbox(*tile)
+            if not wells.empty:
+                frames.append(wells)
+
+        if not frames:
+            return gpd.GeoDataFrame()
+
+        if len(frames) == 1:
+            return frames[0]
+
+        combined = gpd.GeoDataFrame(
+            pd.concat(frames, ignore_index=True), crs='EPSG:4326'
+        )
+        return combined.drop_duplicates(subset='site_no').reset_index(drop=True)
+
+    def _tile_bbox(
+        self,
+        min_lon: float,
+        min_lat: float,
+        max_lon: float,
+        max_lat: float
+    ) -> List[Tuple[float, float, float, float]]:
+        """
+        Split a bounding box into sub-boxes that each stay under the NWIS
+        ``bBox`` area limit.
+
+        Returns a list of ``(min_lon, min_lat, max_lon, max_lat)`` tuples. A
+        box already within the limit is returned unchanged as a single tile.
+        """
+        lon_span = max_lon - min_lon
+        lat_span = max_lat - min_lat
+        area = lon_span * lat_span
+
+        if area <= self.MAX_BBOX_SQ_DEGREES or lon_span <= 0 or lat_span <= 0:
+            return [(min_lon, min_lat, max_lon, max_lat)]
+
+        # Choose a grid whose cells are close to square and each under the
+        # area limit, then add a safety margin against rounding at the edges.
+        import math
+
+        n_tiles = math.ceil(area / self.MAX_BBOX_SQ_DEGREES)
+        ncols = max(1, math.ceil(math.sqrt(n_tiles * lon_span / lat_span)))
+        nrows = max(1, math.ceil(n_tiles / ncols))
+
+        # Grow the grid until every cell is comfortably under the limit.
+        while (lon_span / ncols) * (lat_span / nrows) > self.MAX_BBOX_SQ_DEGREES:
+            if lon_span / ncols >= lat_span / nrows:
+                ncols += 1
+            else:
+                nrows += 1
+
+        lon_edges = [min_lon + lon_span * i / ncols for i in range(ncols + 1)]
+        lat_edges = [min_lat + lat_span * j / nrows for j in range(nrows + 1)]
+
+        tiles = []
+        for i in range(ncols):
+            for j in range(nrows):
+                tiles.append(
+                    (lon_edges[i], lat_edges[j], lon_edges[i + 1], lat_edges[j + 1])
+                )
+        return tiles
+
+    def _get_wells_by_single_bbox(
+        self,
+        min_lon: float,
+        min_lat: float,
+        max_lon: float,
+        max_lat: float
+    ) -> gpd.GeoDataFrame:
+        """Query NWIS for wells within a single (limit-compliant) bounding box."""
         try:
             # Round coordinates to 4 decimal places to avoid USGS API issues
             # with high-precision floating point numbers
             bbox_str = f"{min_lon:.4f},{min_lat:.4f},{max_lon:.4f},{max_lat:.4f}"
-            
+
             # Query NWIS for sites
             sites, _ = nwis.what_sites(
                 bBox=bbox_str,
                 siteType=self.SITE_TYPE,
                 hasDataTypeCd='gw'
             )
-            
+
             if sites.empty:
                 return gpd.GeoDataFrame()
-            
+
             # Create GeoDataFrame
             sites = sites.reset_index()
             geometry = [
-                Point(lon, lat) 
+                Point(lon, lat)
                 for lon, lat in zip(sites['dec_long_va'], sites['dec_lat_va'])
             ]
             gdf = gpd.GeoDataFrame(sites, geometry=geometry, crs='EPSG:4326')
-            
+
             return gdf
-            
+
         except Exception as e:
             logger.error(f"Error querying NWIS for wells: {e}")
             return gpd.GeoDataFrame()
@@ -697,50 +1050,68 @@ class GroundwaterRetrieval:
         self,
         state_code: str
     ) -> gpd.GeoDataFrame:
-        """Get groundwater wells for a state."""
+        """Get groundwater wells for a state (Water Data OGC API, NWIS fallback)."""
+        try:
+            # The OGC API filters by full state name; accept a USPS code or name.
+            state_name = _US_STATE_NAMES.get(str(state_code).upper(), state_code)
+            locs, _ = waterdata.get_monitoring_locations(
+                state_name=state_name, site_type_code=self.SITE_TYPE
+            )
+            wells = self._wells_from_monitoring_locations(locs)
+            if not wells.empty:
+                return wells
+        except Exception as e:
+            logger.warning(
+                f"waterdata query for state {state_code} failed ({e}); "
+                f"falling back to legacy NWIS."
+            )
+
         try:
             sites, _ = nwis.what_sites(
                 stateCd=state_code,
                 siteType=self.SITE_TYPE,
                 hasDataTypeCd='gw'
             )
-            
             if sites.empty:
                 return gpd.GeoDataFrame()
-            
             sites = sites.reset_index()
             geometry = [
-                Point(lon, lat) 
+                Point(lon, lat)
                 for lon, lat in zip(sites['dec_long_va'], sites['dec_lat_va'])
             ]
-            gdf = gpd.GeoDataFrame(sites, geometry=geometry, crs='EPSG:4326')
-            
-            return gdf
-            
+            return gpd.GeoDataFrame(sites, geometry=geometry, crs='EPSG:4326')
         except Exception as e:
-            logger.error(f"Error querying NWIS for wells in {state_code}: {e}")
+            logger.error(f"Error querying wells in {state_code}: {e}")
             return gpd.GeoDataFrame()
 
     def _get_site_info(
         self,
         site_numbers: List[str]
     ) -> gpd.GeoDataFrame:
-        """Get site information for specific sites."""
+        """Get site information for specific sites (OGC API, NWIS fallback)."""
         try:
-            sites, _ = nwis.get_info(sites=site_numbers)
-            
+            locs, _ = waterdata.get_monitoring_locations(
+                monitoring_location_id=[str(s) for s in site_numbers]
+            )
+            wells = self._wells_from_monitoring_locations(locs)
+            if not wells.empty:
+                return wells
+        except Exception as e:
+            logger.warning(
+                f"waterdata site-info query failed ({e}); "
+                f"falling back to legacy NWIS get_info."
+            )
+
+        try:
+            sites, _ = nwis.get_info(sites=self._bare_site_numbers(site_numbers))
             if sites.empty:
                 return gpd.GeoDataFrame()
-            
             sites = sites.reset_index()
             geometry = [
-                Point(lon, lat) 
+                Point(lon, lat)
                 for lon, lat in zip(sites['dec_long_va'], sites['dec_lat_va'])
             ]
-            gdf = gpd.GeoDataFrame(sites, geometry=geometry, crs='EPSG:4326')
-            
-            return gdf
-            
+            return gpd.GeoDataFrame(sites, geometry=geometry, crs='EPSG:4326')
         except Exception as e:
             logger.error(f"Error getting site info: {e}")
             return gpd.GeoDataFrame()
@@ -924,6 +1295,71 @@ class GroundwaterRetrieval:
         finally:
             self.start_date, self.end_date = orig_start, orig_end
 
+    def _coalesce_value_columns(
+        self,
+        data: pd.DataFrame,
+        source: str
+    ) -> pd.DataFrame:
+        """
+        Collapse the per-parameter value columns of a dv/iv frame into a single,
+        consistent measurement.
+
+        USGS returns daily/instantaneous values with one column per parameter
+        code (and, for ``dv``, per statistic, e.g. ``72019_Mean``,
+        ``62611_Maximum``). Different wells report different parameters, so a
+        naive "first matching column" pick mixes incompatible quantities
+        (depth-to-water vs. water-level elevation). This method coalesces the
+        columns row-by-row in parameter-preference order (``GW_LEVEL_PARAMS``,
+        i.e. depth-to-water 72019 first) and records the chosen parameter in a
+        ``parameter_cd`` column.
+
+        Adds/overwrites ``value``, ``lev_va``, and ``parameter_cd``. The
+        original per-parameter columns are left untouched.
+        """
+        # Build an ordered list of (parameter_code, column) candidates. Skip
+        # qualifier-code columns (``*_cd``), which hold approval flags, not
+        # numbers.
+        candidates: List[Tuple[str, str]] = []
+        for param in self.GW_LEVEL_PARAMS:
+            param_cols = [
+                c for c in data.columns
+                if (c == param or c.startswith(f"{param}_")) and not c.endswith('_cd')
+            ]
+            if source == 'dv':
+                def stat_rank(col: str) -> int:
+                    for i, stat in enumerate(self.DV_STAT_PREFERENCE):
+                        if col.endswith(f"_{stat}"):
+                            return i
+                    return len(self.DV_STAT_PREFERENCE)
+                param_cols.sort(key=stat_rank)
+            candidates.extend((param, c) for c in param_cols)
+
+        if not candidates:
+            return data
+
+        # Row-wise coalesce: first non-null value in preference order wins, and
+        # parameter_cd captures which parameter supplied it.
+        value = pd.Series(float('nan'), index=data.index, dtype='float64')
+        param_cd = pd.Series(pd.NA, index=data.index, dtype='object')
+        for param, col in candidates:
+            col_vals = pd.to_numeric(data[col], errors='coerce')
+            fill = value.isna() & col_vals.notna()
+            if fill.any():
+                value = value.where(~fill, col_vals)
+                param_cd = param_cd.where(~fill, param)
+
+        data['value'] = value
+        data['lev_va'] = value  # kept for backward compatibility
+        data['parameter_cd'] = param_cd
+        return data
+
+    # Maps a data source to its modern Water Data OGC API function.
+    _WATERDATA_SOURCE_FUNCS = {
+        'gwlevels': 'get_field_measurements',
+        'dv': 'get_daily',
+        'iv': 'get_continuous',
+    }
+
     def _fetch_source_data(
         self,
         source: str,
@@ -932,18 +1368,90 @@ class GroundwaterRetrieval:
         """
         Fetch data from a specific USGS source.
 
+        Uses the modern Water Data OGC API by default and falls back to the
+        deprecated NWIS endpoints only if the modern call raises.
+
         Parameters
         ----------
         source : str
             Data source: 'gwlevels', 'dv', or 'iv'.
         site_numbers : List[str]
-            List of USGS site numbers.
+            Monitoring location identifiers.
 
         Returns
         -------
         pd.DataFrame
-            Retrieved data, standardized with common columns.
+            Retrieved data, standardized with common columns
+            (``site_no``, ``datetime``, ``value``, ``lev_va``, ``parameter_cd``).
         """
+        try:
+            return self._fetch_source_data_waterdata(source, site_numbers)
+        except Exception as e:
+            logger.debug(
+                f"waterdata {source} fetch failed ({e}); "
+                f"falling back to legacy NWIS."
+            )
+            return self._fetch_source_data_nwis(source, site_numbers)
+
+    def _fetch_source_data_waterdata(
+        self,
+        source: str,
+        site_numbers: List[str]
+    ) -> pd.DataFrame:
+        """Fetch a source via the Water Data OGC API and standardize columns."""
+        func_name = self._WATERDATA_SOURCE_FUNCS.get(source)
+        if func_name is None:
+            logger.warning(f"Unknown data source: {source}")
+            return pd.DataFrame()
+
+        ids = [str(s) for s in site_numbers]
+        time_range = f"{self.start_date}/{self.end_date}"
+        fetch = getattr(waterdata, func_name)
+        data, _ = fetch(
+            monitoring_location_id=ids,
+            parameter_code=self.GW_LEVEL_PARAMS,
+            time=time_range,
+        )
+        return self._standardize_waterdata(data)
+
+    @staticmethod
+    def _standardize_waterdata(data) -> pd.DataFrame:
+        """
+        Map a Water Data OGC long-format frame to the package schema.
+
+        The OGC services return one row per observation with columns
+        ``monitoring_location_id``, ``parameter_code``, ``time``, ``value``.
+        These are renamed to ``site_no``, ``parameter_cd``, ``datetime`` /
+        ``lev_dt``, and ``value`` / ``lev_va`` respectively.
+        """
+        if data is None or len(data) == 0:
+            return pd.DataFrame()
+
+        df = pd.DataFrame(data).copy()
+        if 'geometry' in df.columns:
+            df = df.drop(columns='geometry')  # coordinates come from the wells frame
+        if 'monitoring_location_id' in df.columns:
+            df['site_no'] = df['monitoring_location_id'].astype(str)
+        if 'time' in df.columns:
+            # Store tz-naive datetimes for consistency with the rest of the package.
+            dt = pd.to_datetime(df['time'], errors='coerce', utc=True).dt.tz_localize(None)
+            df['datetime'] = dt
+            df['lev_dt'] = dt
+        if 'value' in df.columns:
+            val = pd.to_numeric(df['value'], errors='coerce')
+            df['value'] = val
+            df['lev_va'] = val
+        if 'parameter_code' in df.columns:
+            df['parameter_cd'] = df['parameter_code'].astype(str)
+        return df
+
+    def _fetch_source_data_nwis(
+        self,
+        source: str,
+        site_numbers: List[str]
+    ) -> pd.DataFrame:
+        """Legacy NWIS fetch (deprecated endpoints); used only as a fallback."""
+        site_numbers = self._bare_site_numbers(site_numbers)
         try:
             if source == 'gwlevels':
                 # Field groundwater-level measurements
@@ -959,10 +1467,12 @@ class GroundwaterRetrieval:
                     # Standardize date column
                     if 'lev_dt' in data.columns:
                         data['datetime'] = pd.to_datetime(data['lev_dt'], errors='coerce')
-                    # Standardize value column
+                    # Standardize value column. Field measurements (lev_va) are
+                    # depth to water below land surface, i.e. parameter 72019.
                     if 'lev_va' in data.columns:
                         data['value'] = data['lev_va']
-                        
+                        data['parameter_cd'] = self.GW_LEVEL_PARAM
+
             elif source == 'dv':
                 # Daily values
                 data, _ = nwis.get_dv(
@@ -978,12 +1488,8 @@ class GroundwaterRetrieval:
                     # Standardize columns
                     if 'datetime' not in data.columns and 'index' in data.columns:
                         data['datetime'] = pd.to_datetime(data['index'], errors='coerce')
-                    # Find value column (could be named by parameter code)
-                    value_cols = [c for c in data.columns if any(p in c for p in self.GW_LEVEL_PARAMS)]
-                    if value_cols:
-                        data['value'] = data[value_cols[0]]
-                        data['lev_va'] = data[value_cols[0]]  # Also set lev_va for compatibility
-                        
+                    data = self._coalesce_value_columns(data, source='dv')
+
             elif source == 'iv':
                 # Instantaneous values (current/historical observations)
                 data, _ = nwis.get_iv(
@@ -999,11 +1505,7 @@ class GroundwaterRetrieval:
                     # Standardize columns
                     if 'datetime' not in data.columns and 'index' in data.columns:
                         data['datetime'] = pd.to_datetime(data['index'], errors='coerce')
-                    # Find value column
-                    value_cols = [c for c in data.columns if any(p in c for p in self.GW_LEVEL_PARAMS)]
-                    if value_cols:
-                        data['value'] = data[value_cols[0]]
-                        data['lev_va'] = data[value_cols[0]]  # Also set lev_va for compatibility
+                    data = self._coalesce_value_columns(data, source='iv')
             else:
                 logger.warning(f"Unknown data source: {source}")
                 return pd.DataFrame()

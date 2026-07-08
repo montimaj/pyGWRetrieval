@@ -84,10 +84,11 @@ For more information, visit: https://github.com/example/pyGWRetrieval
         formatter_class=argparse.RawDescriptionHelpFormatter
     )
     
+    from pyGWRetrieval import __version__
     parser.add_argument(
         '--version', '-V',
         action='version',
-        version='%(prog)s 0.1.0'
+        version=f'%(prog)s {__version__}'
     )
     
     parser.add_argument(
@@ -233,9 +234,9 @@ Supports multiple input methods:
         '--data-sources',
         type=str,
         nargs='+',
-        default=['gwlevels'],
+        default=['dv'],
         metavar='SOURCE',
-        help='''USGS data sources to retrieve (default: gwlevels).
+        help='''USGS data sources to retrieve (default: dv).
 Options: gwlevels (field measurements), dv (daily values), iv (instantaneous values), all.
 Examples: --data-sources gwlevels dv, --data-sources all'''
     )

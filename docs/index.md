@@ -9,7 +9,7 @@ Welcome to the pyGWRetrieval documentation!
 
 ## Overview
 
-pyGWRetrieval is a Python package for retrieving and analyzing groundwater level data from the USGS National Water Information System (NWIS).
+pyGWRetrieval is a Python package for retrieving and analyzing USGS groundwater level data via the modern USGS Water Data OGC API (serving National Water Information System data).
 
 ### USGS Data Sources
 
@@ -69,7 +69,7 @@ fig = plotter.plot_time_series()
 ### Command Line Interface
 
 ```bash
-# Retrieve data (default: gwlevels only)
+# Retrieve data (default: dv / daily values)
 pygwretrieval retrieve --zipcode 89701 --buffer 10 --output data.csv
 
 # Retrieve from all USGS sources
