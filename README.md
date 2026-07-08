@@ -780,6 +780,32 @@ The package retrieves groundwater level data with the following columns:
 
 Install the interpolation stack with `pip install pyGWRetrieval[interp]`.
 
+## Optional: USGS API Token
+
+No API key is required — the USGS Water Data OGC API (and the legacy NWIS fallback) serve public data anonymously, so pyGWRetrieval works out of the box.
+
+If you make heavy or frequent requests, you can optionally supply a **USGS Personal Access Token (PAT)** to raise the request rate limit. Request one from the [USGS Water Data API](https://api.waterdata.usgs.gov/). pyGWRetrieval relies on `dataretrieval`, which reads the token from the `API_USGS_PAT` environment variable and sends it as the `X-Api-Key` header on every request — no code or argument changes needed.
+
+**From the shell (applies to the CLI and Python):**
+
+```bash
+export API_USGS_PAT="your-token-here"
+pygwretrieval retrieve --state NV
+```
+
+**From Python:**
+
+```python
+import os
+os.environ["API_USGS_PAT"] = "your-token-here"  # must be set before making requests
+
+from pyGWRetrieval import GroundwaterRetriever
+gw = GroundwaterRetriever()
+data = gw.get_data_by_state("NV")
+```
+
+> The token only affects rate limits; all queries also work without it. Token support requires `dataretrieval >= 1.2.0` (the version this package targets).
+
 ### Storage Requirements
 
 Storage requirements vary based on the number of zip codes, buffer distance, and data sources queried. Below are example estimates based on the `full_workflow_csv_zipcodes.py` example (99 zip codes, 25-mile buffer, gwlevels source, ~8M records):
