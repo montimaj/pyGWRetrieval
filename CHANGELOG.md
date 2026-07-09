@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0.post1] - 2026-07-08
+
+### Added
+- Archived the release on Zenodo with a citable DOI. Added the Zenodo DOI badge
+  and a `doi` field in the BibTeX citation across the README and documentation
+  (`index`, `quickstart`, `case_study`, `analysis_report`).
+
+_Post-release: documentation/metadata only; no code or API changes._
+
 ## [0.2.0] - 2026-07-08
 
 ### Added
