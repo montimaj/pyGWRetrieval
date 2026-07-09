@@ -426,6 +426,7 @@ If you use this package in your research, please cite:
   author = {Sayantan Majumdar},
   title = {pyGWRetrieval: Scalable Retrieval and Analysis of USGS Groundwater Level Data},
   year = {2026},
-  url = {https://github.com/montimaj/pyGWRetrieval}
+  doi = {10.5281/zenodo.21272166},
+  url = {https://doi.org/10.5281/zenodo.21272166}
 }
 ```

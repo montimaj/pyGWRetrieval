@@ -8,6 +8,7 @@ A Python package for retrieving and analyzing USGS groundwater level data.
 [![Python Version](https://img.shields.io/badge/python-3.10%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Changelog](https://img.shields.io/badge/changelog-v0.2.0-orange.svg)](CHANGELOG.md)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21272166.svg)](https://doi.org/10.5281/zenodo.21272166)
 
 ## Overview
 
@@ -951,7 +952,8 @@ If you use this package in your research, please cite:
   author = {Sayantan Majumdar},
   title = {pyGWRetrieval: Scalable Retrieval and Analysis of USGS Groundwater Level Data},
   year = {2026},
-  url = {https://github.com/montimaj/pyGWRetrieval}
+  doi = {10.5281/zenodo.21272166},
+  url = {https://doi.org/10.5281/zenodo.21272166}
 }
 ```
 

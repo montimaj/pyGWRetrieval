@@ -155,6 +155,7 @@ trends = aggregator.get_trends(period='annual', parallel=True)
   author = {Sayantan Majumdar},
   title = {pyGWRetrieval: Scalable Retrieval and Analysis of USGS Groundwater Level Data},
   year = {2026},
-  url = {https://github.com/montimaj/pyGWRetrieval}
+  doi = {10.5281/zenodo.21272166},
+  url = {https://doi.org/10.5281/zenodo.21272166}
 }
 ```

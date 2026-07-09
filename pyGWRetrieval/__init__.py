@@ -24,7 +24,7 @@ Author: Sayantan Majumdar
 License: MIT
 """
 
-__version__ = "0.2.0"
+__version__ = "0.2.0.post1"
 __author__ = "Sayantan Majumdar"
 
 from .retrieval import GroundwaterRetrieval
